@@ -786,7 +786,7 @@ namespace hint_arithm
     // 递归除法,从被除数返回余数,需要确保除数的规则化
     template <typename T>
     void abs_rec_div(T dividend[], T divisor[], hintvector<T> &quot,
-                     size_t len1, size_t len2, const UINT_64 base, int c = 0)
+                     size_t len1, size_t len2, const UINT_64 base)
     {
         len1 = ary_true_len(dividend, len1);
         len2 = ary_true_len(divisor, len2);
@@ -817,13 +817,13 @@ namespace hint_arithm
         else if (len1 >= len2 * 2 || len1 > ((len2 + 1) / 2) * 3) // 2n/n的除法，进行两次递归
         {
             size_t base_len = (len1 + 3) / 4;
-            size_t quot_tmp_len = base_len * 3 - len2 + 1;
+            size_t quot_tmp_len = base_len * 3 - len2 + 2;
             hintvector<T> quot_tmp(quot_tmp_len, 0);
 
-            abs_rec_div(dividend + base_len, divisor, quot_tmp, len1 - base_len, len2, base, c + 1);
+            abs_rec_div(dividend + base_len, divisor, quot_tmp, len1 - base_len, len2, base);
             quot_tmp_len = quot_tmp.set_true_len();
             size_t dividend_len = ary_true_len(dividend, len1);
-            abs_rec_div(dividend, divisor, quot, dividend_len, len2, base, c + 2);
+            abs_rec_div(dividend, divisor, quot, dividend_len, len2, base);
             quot.change_length(quot_len);
             quot_len = quot.set_true_len();
             abs_add(quot.type_ptr() + base_len, quot_tmp.type_ptr(), quot.type_ptr() + base_len, quot_len - base_len, quot_tmp_len, base);
@@ -833,7 +833,7 @@ namespace hint_arithm
         {
             // 开始试商,用dividend/(base^base_len)除以divisor/(base^base_len)
             size_t base_len = len2 / 2;
-            abs_rec_div(dividend + base_len, divisor + base_len, quot, len1 - base_len, len2 - base_len, base, c + 2);
+            abs_rec_div(dividend + base_len, divisor + base_len, quot, len1 - base_len, len2 - base_len, base);
 
             constexpr T ONE[1] = {1};
             quot_len = quot.set_true_len();
@@ -860,7 +860,7 @@ namespace hint_arithm
     // 绝对值除法
     template <typename T>
     hintvector<T> abs_div(const T dividend[], T divisor[], hintvector<T> &quot,
-                          size_t len1, size_t len2, const UINT_64 base)
+                          size_t len1, size_t len2, const UINT_64 base, bool ret_rem = true)
     {
         hintvector<T> normalized_divisor(len2); // 定义规则化的除数
         normalized_divisor.change_length(len2);
@@ -872,13 +872,23 @@ namespace hint_arithm
         T multiplier = divisor_normalize(divisor, divisor_ptr, len2, base); // 除数规则化,获得乘数
         abs_mul_num(dividend, multiplier, dividend_ptr, len1, base);        // 被除数规则化
         len1 = normalized_dividend.set_true_len();
-
         quot = hintvector<T>(len1 - len2 + 2, 0);
-        // abs_rec_div(dividend_ptr, divisor_ptr, quot, len1, len2, base);
-
-        abs_long_div(dividend_ptr, divisor_ptr, quot.type_ptr(), normalized_dividend.length(), len2, base);
-        abs_div_num(dividend_ptr, multiplier, dividend_ptr, len1, base); // 余数除以乘数得到正确的结果
-        normalized_dividend.set_true_len();
+        if ((!ret_rem) && (len1 + 2 < len2 * 2))
+        {
+            // 除数过长时可以截取一部分不参与计算
+            size_t shift = len2 * 2 - len1 - 2;
+            abs_rec_div(dividend_ptr + shift, divisor_ptr + shift, quot, len1 - shift, len2 - shift, base);
+            size_t quot_len = quot.set_true_len();
+            return normalized_dividend;
+        }
+        abs_rec_div(dividend_ptr, divisor_ptr, quot, len1, len2, base);
+        quot.set_true_len();
+        if (ret_rem)
+        {
+            len1 = normalized_dividend.set_true_len();
+            abs_div_num(dividend_ptr, multiplier, dividend_ptr, len1, base); // 余数除以乘数得到正确的结果
+            normalized_dividend.set_true_len();
+        }
         return normalized_dividend;
     }
     /// @brief 高精度进制转换
@@ -1365,7 +1375,7 @@ public:
         auto ptr1 = data.type_ptr();
         auto ptr2 = input.data.type_ptr();
 
-        hint_arithm::abs_div(ptr1, ptr2, result.data, len1, len2, BASE);
+        hint_arithm::abs_div(ptr1, ptr2, result.data, len1, len2, BASE, false);
 
         result.data.set_true_len();
         result.change_sign(is_neg() != input.is_neg());
