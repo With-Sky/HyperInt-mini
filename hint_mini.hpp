@@ -626,6 +626,37 @@ namespace hint_arithm
             karatsuba_mul(in, in, out, len, len, base);
         }
     }
+    // 高精度非平衡乘法
+    template <typename T>
+    constexpr void abs_mul_balance(const T in1[], const T in2[], T out[],
+                                   size_t len1, size_t len2, const INT_64 base)
+    {
+        if (len1 < len2)
+        {
+            std::swap(in1, in2);
+            std::swap(len1, len2);
+        }
+        size_t count = (len1 + len2 - 1) / len2;
+        size_t block_size = len1 / count;
+        size_t len = len1 + block_size - count * block_size;
+        if (len > 0)
+        {
+            abs_mul(in1, in2, out, len, len2, base);
+        }
+        if (len == len1)
+        {
+            return;
+        }
+        hintvector<T> prod(block_size + len2);
+        size_t mul_len = len + len2;
+        while (len < len1)
+        {
+            abs_mul(in1 + len, in2, prod.type_ptr(), block_size, len2, base);
+            abs_add(out + len, prod.type_ptr(), out + len, mul_len - block_size, block_size + len2, base);
+            mul_len = block_size + len2;
+            len += block_size;
+        }
+    }
     // 高精度乘低精度
     template <bool is_carry = true, typename T>
     constexpr void abs_mul_num(const T in[], T num, T out[], size_t len, const UINT_64 base)
@@ -650,6 +681,7 @@ namespace hint_arithm
             out[len] = prod;
         }
     }
+
     // 除以num的同时返回余数
     template <typename T>
     constexpr INT_64 abs_div_num(const T in[], T num, T out[], size_t len, const UINT_64 base)
@@ -878,7 +910,7 @@ namespace hint_arithm
             // 除数过长时可以截取一部分不参与计算
             size_t shift = len2 * 2 - len1 - 2;
             abs_rec_div(dividend_ptr + shift, divisor_ptr + shift, quot, len1 - shift, len2 - shift, base);
-            size_t quot_len = quot.set_true_len();
+            quot.set_true_len();
             return normalized_dividend;
         }
         abs_rec_div(dividend_ptr, divisor_ptr, quot, len1, len2, base);
@@ -1215,6 +1247,17 @@ public:
         }
         putchar('\n');
     }
+    friend std::istream &operator>>(std::istream &is, Integer &num)
+    {
+        std::string tmp;
+        is >> tmp;
+        num.string_in(tmp);
+        return is;
+    }
+    friend std::ostream &operator<<(std::ostream &os, const Integer &num)
+    {
+        return os << num.to_string();
+    }
     hint::INT_32 abs_compare(const Integer &input) const
     {
         size_t len1 = length(), len2 = input.length();
@@ -1354,7 +1397,7 @@ public:
         }
         else
         {
-            hint_arithm::abs_mul(ptr1, ptr2, res_ptr, len1, len2, BASE);
+            hint_arithm::abs_mul_balance(ptr1, ptr2, res_ptr, len1, len2, BASE);
         }
         result.data.set_true_len();
         result.change_sign(is_neg() != input.is_neg());

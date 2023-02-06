@@ -246,6 +246,42 @@ namespace hint
             target[i] = static_cast<T1>(source[i]);
         }
     }
+    // 去除数组前导零后的长度
+    template <typename T>
+    constexpr size_t ary_true_len(const T &ary, size_t len)
+    {
+        while (len > 0 && ary[len - 1] == 0)
+        {
+            len--;
+        }
+        return len;
+    }
+    // 模版数组分配内存且清零
+    template <typename T>
+    inline void ary_calloc(T *&ptr, size_t len)
+    {
+        ptr = static_cast<T *>(calloc(len, sizeof(T)));
+    }
+    // 模版数组清零
+    template <typename T>
+    inline void ary_clr(T *ptr, size_t len)
+    {
+        memset(ptr, 0, len * sizeof(T));
+    }
+    // 重分配空间
+    template <typename T>
+    inline T *ary_realloc(T *ptr, size_t len)
+    {
+        if (len * sizeof(T) < INT64_MAX)
+        {
+            ptr = static_cast<T *>(realloc(ptr, len * sizeof(T)));
+        }
+        if (ptr == nullptr)
+        {
+            throw("realloc error");
+        }
+        return ptr;
+    }
     // 从其他类型数组拷贝到复数组实部
     template <typename T>
     inline void com_ary_real_copy(Complex *target, const T &source, size_t len)
@@ -286,42 +322,6 @@ namespace hint
             i++;
         }
     }
-    // 去除数组前导零后的长度
-    template <typename T>
-    constexpr size_t ary_true_len(const T &ary, size_t len)
-    {
-        while (len > 0 && ary[len - 1] == 0)
-        {
-            len--;
-        }
-        return len;
-    }
-    // 模版数组分配内存且清零
-    template <typename T>
-    inline void ary_calloc(T *&ptr, size_t len)
-    {
-        ptr = static_cast<T *>(calloc(len, sizeof(T)));
-    }
-    // 模版数组清零
-    template <typename T>
-    inline void ary_clr(T *ptr, size_t len)
-    {
-        memset(ptr, 0, len * sizeof(T));
-    }
-    // 重分配空间
-    template <typename T>
-    inline T *ary_realloc(T *ptr, size_t len)
-    {
-        if (len * sizeof(T) < INT64_MAX)
-        {
-            ptr = static_cast<T *>(realloc(ptr, len * sizeof(T)));
-        }
-        if (ptr == nullptr)
-        {
-            throw("realloc error");
-        }
-        return ptr;
-    }
     // 数组交错重排
     template <UINT_64 N, typename T>
     void ary_interlace(T ary[], size_t len)
@@ -339,6 +339,13 @@ namespace hint
         ary_copy(ary + sub_len, tmp_ary, len - sub_len);
         delete[] tmp_ary;
     }
+    // 数组分块
+    template <size_t CHUNK, typename T1, typename T2>
+    void ary_chunk_split(T1 input[], T2 output, size_t in_len)
+    {
+        // 将输入数组视为一整块连续的数据,从第一个比特开始,每CHUNK个bit为一组，依次放到输出结果数组中
+    }
+    // FFT与类FFT变换的命名空间
     namespace hint_transform
     {
         class UnitTable
@@ -420,6 +427,40 @@ namespace hint
                     break;
                 case 3:
                     tmp = std::conj(ptr[(rank << 2) - n]);
+                    break;
+                default:
+                    break;
+                }
+                return tmp;
+            }
+            Complex get_complex_conj(INT_32 shift, size_t n)
+            {
+                size_t rank = 1ull << shift;
+                n &= (rank - 1);
+                size_t zone = (n << 2) >> shift; // 第几象限
+                if (((n << 2) & (rank - 1)) == 0)
+                {
+                    constexpr Complex ary[4] = {Complex(1, 0), Complex(0, -1), Complex(-1, 0), Complex(0, 1)};
+                    return ary[zone];
+                }
+                rank >>= 2;
+                const Complex *ptr = table + rank - 2;
+                Complex tmp;
+                switch (zone)
+                {
+                case 0:
+                    tmp = ptr[n];
+                    tmp.imag(-tmp.imag());
+                    break;
+                case 1:
+                    tmp = -ptr[(rank << 1) - n];
+                    break;
+                case 2:
+                    tmp = ptr[n - (rank << 1)];
+                    tmp.real(-tmp.real());
+                    break;
+                case 3:
+                    tmp = ptr[(rank << 2) - n];
                     break;
                 default:
                     break;
@@ -665,7 +706,7 @@ namespace hint
                     fft_2point(input[gap + begin], input[gap + begin + rank]);
                     for (size_t pos = begin + 1; pos < begin + rank; pos++)
                     {
-                        Complex omega = std::conj(TABLE.get_complex(shift, pos - begin));
+                        Complex omega = TABLE.get_complex_conj(shift, pos - begin);
                         fft_radix2_dit_butterfly(omega, input, pos, rank);
                         fft_radix2_dit_butterfly(omega, input, pos + gap, rank);
                     }
@@ -680,7 +721,7 @@ namespace hint
                     fft_2point(input[begin], input[begin + rank]);
                     for (size_t pos = begin + 1; pos < begin + rank; pos++)
                     {
-                        Complex omega = std::conj(TABLE.get_complex(shift, pos - begin));
+                        Complex omega = TABLE.get_complex_conj(shift, pos - begin);
                         fft_radix2_dit_butterfly(omega, input, pos, rank);
                     }
                 }
@@ -712,7 +753,7 @@ namespace hint
                 {
                     for (size_t pos = begin; pos < begin + rank; pos++)
                     {
-                        Complex omega = std::conj(TABLE.get_complex(shift, pos - begin));
+                        Complex omega = TABLE.get_complex_conj(shift, pos - begin);
                         fft_radix2_dif_butterfly(omega, input, pos, rank);
                     }
                 }
@@ -725,7 +766,7 @@ namespace hint
                 {
                     for (size_t pos = begin; pos < begin + rank; pos++)
                     {
-                        Complex omega = std::conj(TABLE.get_complex(shift, pos - begin));
+                        Complex omega = TABLE.get_complex_conj(shift, pos - begin);
                         fft_radix2_dif_butterfly(omega, input, pos, rank);
                         fft_radix2_dif_butterfly(omega, input, pos + gap, rank);
                     }
@@ -771,9 +812,9 @@ namespace hint
                     for (size_t pos = begin + 1; pos < begin + rank; pos++)
                     {
                         size_t count = pos - begin;
-                        Complex omega = std::conj(TABLE.get_complex(shift, count));
-                        Complex omega_sqr = std::conj(TABLE.get_complex(shift, count * 2));
-                        Complex omega_cube = std::conj(TABLE.get_complex(shift, count * 3));
+                        Complex omega = TABLE.get_complex_conj(shift, count);
+                        Complex omega_sqr = TABLE.get_complex_conj(shift, count * 2);
+                        Complex omega_cube = TABLE.get_complex_conj(shift, count * 3);
                         fft_radix4_dit_butterfly(omega, omega_sqr, omega_cube, input, pos, rank);
                     }
                 }
@@ -807,9 +848,9 @@ namespace hint
                     for (size_t pos = begin + 1; pos < begin + rank; pos++)
                     {
                         size_t count = pos - begin;
-                        Complex omega = std::conj(TABLE.get_complex(shift, count));
-                        Complex omega_sqr = std::conj(TABLE.get_complex(shift, count * 2));
-                        Complex omega_cube = std::conj(TABLE.get_complex(shift, count * 3));
+                        Complex omega = TABLE.get_complex_conj(shift, count);
+                        Complex omega_sqr = TABLE.get_complex_conj(shift, count * 2);
+                        Complex omega_cube = TABLE.get_complex_conj(shift, count * 3);
                         fft_radix4_dif_butterfly(omega, omega_sqr, omega_cube, input, pos, rank);
                     }
                 }
@@ -863,9 +904,9 @@ namespace hint
                     for (size_t pos = begin + 1; pos < begin + rank; pos++)
                     {
                         size_t count = pos - begin;
-                        Complex omega = std::conj(TABLE.get_complex(shift, count));
-                        Complex omega_sqr = std::conj(TABLE.get_complex(shift, count * 2));
-                        Complex omega_cube = std::conj(TABLE.get_complex(shift, count * 3));
+                        Complex omega = TABLE.get_complex_conj(shift, count);
+                        Complex omega_sqr = TABLE.get_complex_conj(shift, count * 2);
+                        Complex omega_cube = TABLE.get_complex_conj(shift, count * 3);
                         for (size_t j = 0; j < BATCH; j++)
                         {
                             fft_radix4_dit_butterfly(omega, omega_sqr, omega_cube, input, j + pos * BATCH, rank * BATCH);
@@ -897,7 +938,7 @@ namespace hint
             fft_radix4_batch<2>(input, sub_len);
             for (size_t i = 0; i < fft_len; i += 2)
             {
-                Complex omega = std::conj(TABLE.get_complex(log_len, i / 2));
+                Complex omega = TABLE.get_complex_conj(log_len, i / 2);
                 fft_radix2_dit_butterfly(omega, input, i, 1);
             }
             ary_interlace<2>(input, fft_len);
@@ -925,9 +966,9 @@ namespace hint
             fft_radix4_batch<4>(input, quarter_len);
             for (size_t i = 0; i < fft_len; i += 4)
             {
-                Complex omega = std::conj(TABLE.get_complex(log_len, i / 4));
-                Complex omega_sqr = std::conj(TABLE.get_complex(log_len, i / 2));
-                Complex omega_cube = std::conj(TABLE.get_complex(log_len, i * 3 / 4));
+                Complex omega = TABLE.get_complex_conj(log_len, i / 4);
+                Complex omega_sqr = TABLE.get_complex_conj(log_len, i / 2);
+                Complex omega_cube = TABLE.get_complex_conj(log_len, i * 3 / 4);
                 fft_radix4_dit_butterfly(omega, omega_sqr, omega_cube, input, i, 1);
             }
             ary_interlace<4>(input, fft_len);
@@ -1496,11 +1537,14 @@ namespace hint
             }
             ary_copy(input + half_len, tmp_ary, half_len);
             delete[] tmp_ary;
-
+#ifdef MULTITHREAD
             std::future<void> th = std::async(ntt_single<MOD, G_ROOT>, input, half_len);
             ntt_single<MOD, G_ROOT>(input + half_len, half_len);
             th.wait();
-
+#else
+            ntt_single<MOD, G_ROOT>(input, half_len);
+            ntt_single<MOD, G_ROOT>(input + half_len, half_len);
+#endif
             constexpr UINT_64 omega2 = qpow(G_ROOT, (MOD - 1) / 4, MOD);
             const UINT_64 unit_omega = qpow(G_ROOT, (MOD - 1) / ntt_len, MOD);
             auto merge_proc = [=](size_t start, size_t end, UINT_64 omega_start)
@@ -1515,9 +1559,13 @@ namespace hint
                     omega = omega * unit_omega % MOD;
                 }
             };
+#ifdef MULTITHREAD
             th = std::async(merge_proc, 0, half_len / 2, 1);
             merge_proc(half_len / 2, half_len, omega2);
             th.wait();
+#else
+            merge_proc(0, half_len, 1);
+#endif
         }
         /// @brief 快速数论变换
         /// @tparam T 输入整数组类型
