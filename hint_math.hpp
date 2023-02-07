@@ -123,6 +123,11 @@ namespace hint
         }
         return result;
     }
+    // 模意义下的逆元
+    constexpr UINT_64 mod_inv(UINT_64 n, UINT_64 mod)
+    {
+        return qpow(n, mod - 2, mod);
+    }
     // 利用编译器优化一次性算出商和余数
     template <typename T>
     constexpr std::pair<T, T> div_mod(T a, T b)
@@ -196,7 +201,7 @@ namespace hint
         {
             UINT_64 mod = mods[i];
             UINT_64 tmp = mod_product / mod;
-            UINT_64 inv = qpow(tmp, mod - 2, mod);
+            UINT_64 inv = mod_inv(tmp, mod);
             result += nums[i] * tmp * inv % mod_product;
         }
         return result % mod_product;
@@ -210,17 +215,18 @@ namespace hint
     /// @param inv1 第一个模数在第二个模数下的逆元
     /// @param inv2 第二个模数在第一个模数下的逆元
     /// @return n的最小解
-    constexpr UINT_64 qcrt(UINT_64 num1, UINT_64 num2,
-                           UINT_64 mod1, UINT_64 mod2,
-                           UINT_64 inv1, UINT_64 inv2)
+    template <UINT_64 MOD1, UINT_64 MOD2>
+    constexpr UINT_64 qcrt(UINT_64 num1, UINT_64 num2)
     {
+        constexpr UINT_64 inv1 = mod_inv(MOD1, MOD2);
+        constexpr UINT_64 inv2 = mod_inv(MOD2, MOD1);
         if (num1 > num2)
         {
-            return ((num1 - num2) * inv2 % mod1) * mod2 + num2;
+            return ((num1 - num2) * inv2 % MOD1) * MOD2 + num2;
         }
         else
         {
-            return ((num2 - num1) * inv1 % mod2) * mod1 + num1;
+            return ((num2 - num1) * inv1 % MOD2) * MOD1 + num1;
         }
     }
     // 模板数组拷贝
@@ -1144,8 +1150,17 @@ namespace hint
         template <UINT_64 MOD>
         inline void ntt_normalize(UINT_32 *input, size_t ntt_len)
         {
-            const UINT_64 inv = qpow(ntt_len, MOD - 2, MOD);
-            for (size_t i = 0; i < ntt_len; i++)
+            const UINT_64 inv = mod_inv(ntt_len, MOD);
+            size_t mod4 = ntt_len % 4;
+            ntt_len -= mod4;
+            for (size_t i = 0; i < ntt_len; i += 4)
+            {
+                input[i] = inv * input[i] % MOD;
+                input[i + 1] = inv * input[i + 1] % MOD;
+                input[i + 2] = inv * input[i + 2] % MOD;
+                input[i + 3] = inv * input[i + 3] % MOD;
+            }
+            for (size_t i = ntt_len; i < ntt_len + mod4; i++)
             {
                 input[i] = inv * input[i] % MOD;
             }
@@ -1201,7 +1216,7 @@ namespace hint
             UINT_32 t1 = add_mod(tmp1, tmp3, MOD);
             UINT_32 t2 = add_mod(tmp2, tmp4, MOD);
             UINT_32 t3 = sub_mod(tmp1, tmp3, MOD);
-            UINT_32 t4 = sub_mod(tmp2, tmp4, MOD) * quarter % MOD;
+            UINT_32 t4 = (MOD + tmp2 - tmp4) * quarter % MOD;
 
             input[pos] = add_mod(t1, t2, MOD);
             input[pos + rank] = add_mod(t3, t4, MOD) * omega % MOD;
@@ -1450,6 +1465,24 @@ namespace hint
                 quaternary_inverse_swap<BATCH>(input, ntt_len);
             }
         }
+        // 4批量计算基4ntt
+        template <UINT_64 MOD = 2281701377, UINT_64 G_ROOT = 3>
+        void ntt_radix4_bat4(UINT_32 *input, size_t ntt_len)
+        {
+            size_t quarter_len = ntt_len / 4;
+            ntt_radix4_dif<MOD, G_ROOT, 4>(input, quarter_len, true);
+            constexpr UINT_64 quarter = qpow(G_ROOT, (MOD - 1) / 4, MOD); // 等价于复数的i
+            const UINT_64 unit_omega = qpow(G_ROOT, (MOD - 1) / ntt_len, MOD);
+            UINT_64 omega = 1;
+            for (size_t i = 0; i < ntt_len; i += 4)
+            {
+                UINT_64 omega_sqr = omega * omega % MOD;
+                UINT_64 omega_cube = omega_sqr * omega % MOD;
+                ntt_radix4_dit_butterfly<MOD>(omega, omega_sqr, omega_cube, quarter, input, i, 1);
+                omega = omega * unit_omega % MOD;
+            }
+            ary_interlace<4>(input, ntt_len);
+        }
         template <UINT_64 MOD = 2281701377, UINT_64 G_ROOT = 3>
         void ntt_dif(UINT_32 *input, size_t ntt_len, bool bit_inv = true)
         {
@@ -1465,32 +1498,12 @@ namespace hint
             }
             else
             {
-                ntt_radix4_dif<MOD, G_ROOT>(input, ntt_len, bit_inv);
+                ntt_radix4_bat4<MOD, G_ROOT>(input, ntt_len);
+                // ntt_radix4_dif<MOD, G_ROOT>(input, ntt_len, bit_inv);
             }
         }
         template <UINT_64 MOD = 2281701377, UINT_64 G_ROOT = 3>
-        void intt_dit(UINT_32 *input, size_t ntt_len, bool bit_inv = true)
-        {
-            ntt_len = max_2pow(ntt_len);
-            if (ntt_len <= 1)
-            {
-                return;
-            }
-            constexpr UINT_64 IG_ROOT = qpow(G_ROOT, MOD - 2, MOD);
-            size_t log_len = std::log2(ntt_len);
-            if (is_odd(log_len))
-            {
-                ntt_radix2_dit<MOD, IG_ROOT>(input, ntt_len, bit_inv);
-            }
-            else
-            {
-                ntt_radix4_dit<MOD, IG_ROOT>(input, ntt_len, bit_inv);
-            }
-            ntt_normalize<MOD>(input, ntt_len);
-        }
-        // 单线程NTT
-        template <UINT_64 MOD = 2281701377, UINT_64 G_ROOT = 3>
-        void ntt_single(UINT_32 *input, size_t ntt_len)
+        void ntt_dit(UINT_32 *input, size_t ntt_len, bool bit_inv = true)
         {
             ntt_len = max_2pow(ntt_len);
             if (ntt_len <= 1)
@@ -1500,23 +1513,12 @@ namespace hint
             size_t log_len = std::log2(ntt_len);
             if (is_odd(log_len))
             {
-                ntt_radix2_dif<MOD, G_ROOT>(input, ntt_len, true);
+                ntt_radix2_dit<MOD, G_ROOT>(input, ntt_len, bit_inv);
             }
             else
             {
-                size_t quarter_len = ntt_len / 4;
-                ntt_radix4_dif<MOD, G_ROOT, 4>(input, quarter_len, true);
-                constexpr UINT_64 quarter = qpow(G_ROOT, (MOD - 1) / 4, MOD); // 等价于复数的i
-                const UINT_64 unit_omega = qpow(G_ROOT, (MOD - 1) / ntt_len, MOD);
-                UINT_64 omega = 1;
-                for (size_t i = 0; i < ntt_len; i += 4)
-                {
-                    UINT_64 omega_sqr = omega * omega % MOD;
-                    UINT_64 omega_cube = omega_sqr * omega % MOD;
-                    ntt_radix4_dit_butterfly<MOD>(omega, omega_sqr, omega_cube, quarter, input, i, 1);
-                    omega = omega * unit_omega % MOD;
-                }
-                ary_interlace<4>(input, ntt_len);
+                ntt_radix4_bat4<MOD, G_ROOT>(input, ntt_len);
+                // ntt_radix4_dit<MOD, IG_ROOT>(input, ntt_len, bit_inv);
             }
         }
         // 双线程NTT
@@ -1538,12 +1540,12 @@ namespace hint
             ary_copy(input + half_len, tmp_ary, half_len);
             delete[] tmp_ary;
 #ifdef MULTITHREAD
-            std::future<void> th = std::async(ntt_single<MOD, G_ROOT>, input, half_len);
-            ntt_single<MOD, G_ROOT>(input + half_len, half_len);
+            std::future<void> th = std::async(ntt_dif<MOD, G_ROOT>, input, half_len, true);
+            ntt_dif<MOD, G_ROOT>(input + half_len, half_len, true);
             th.wait();
 #else
-            ntt_single<MOD, G_ROOT>(input, half_len);
-            ntt_single<MOD, G_ROOT>(input + half_len, half_len);
+            ntt_dif<MOD, G_ROOT>(input, half_len);
+            ntt_dif<MOD, G_ROOT>(input + half_len, half_len);
 #endif
             constexpr UINT_64 omega2 = qpow(G_ROOT, (MOD - 1) / 4, MOD);
             const UINT_64 unit_omega = qpow(G_ROOT, (MOD - 1) / ntt_len, MOD);
@@ -1576,16 +1578,13 @@ namespace hint
         /// @param is_intt 是否为逆变换
         /// @param multi_threads 是否为多线程
         template <UINT_64 MOD = 2281701377, UINT_64 G_ROOT = 3>
-        void ntt(UINT_32 *input, size_t ntt_len, bool multi_threads = false)
+        void ntt(UINT_32 *input, size_t ntt_len)
         {
-            if (multi_threads)
-            {
-                ntt_dual<MOD, G_ROOT>(input, ntt_len);
-            }
-            else
-            {
-                ntt_single<MOD, G_ROOT>(input, ntt_len);
-            }
+#ifdef MULTITHREAD
+            ntt_dual<MOD, G_ROOT>(input, ntt_len);
+#else
+            ntt_dif<MOD, G_ROOT>(input, ntt_len, false);
+#endif
         }
         /// @brief 快速数论逆变换
         /// @tparam T 输入整数组类型
@@ -1596,17 +1595,14 @@ namespace hint
         /// @param is_intt 是否为逆变换
         /// @param multi_threads 是否为多线程
         template <UINT_64 MOD = 2281701377, UINT_64 G_ROOT = 3>
-        void intt(UINT_32 *input, size_t ntt_len, bool multi_threads = false)
+        void intt(UINT_32 *input, size_t ntt_len)
         {
-            constexpr UINT_64 IG_ROOT = qpow(G_ROOT, MOD - 2, MOD);
-            if (multi_threads)
-            {
-                ntt_dual<MOD, IG_ROOT>(input, ntt_len);
-            }
-            else
-            {
-                ntt_single<MOD, IG_ROOT>(input, ntt_len);
-            }
+            constexpr UINT_64 IG_ROOT = mod_inv(G_ROOT, MOD);
+#ifdef MULTITHREAD
+            ntt_dual<MOD, IG_ROOT>(input, ntt_len);
+#else
+            ntt_dit<MOD, IG_ROOT>(input, ntt_len, false);
+#endif
             ntt_normalize<MOD>(input, ntt_len);
         }
     }
@@ -1706,14 +1702,12 @@ namespace hint
         ary_mul_mod<mod1>(ntt_ary2, ntt_ary1, ntt_ary1, ntt_len);
         ary_mul_mod<mod2>(ntt_ary4, ntt_ary3, ntt_ary3, ntt_len); // 每一位相乘
 
-        hint_transform::intt_dit<mod1, root1>(ntt_ary1, ntt_len, false);
-        hint_transform::intt_dit<mod2, root2>(ntt_ary3, ntt_len, false);
+        hint_transform::ntt_dit<mod1, root1>(ntt_ary1, ntt_len, false);
+        hint_transform::ntt_dit<mod2, root2>(ntt_ary3, ntt_len, false);
 
-        constexpr UINT_64 inv1 = qpow(mod1, mod2 - 2, mod2);
-        constexpr UINT_64 inv2 = qpow(mod2, mod1 - 2, mod1);
         for (size_t i = 0; i < ntt_len; i++)
         {
-            out[i] = qcrt(ntt_ary1[i], ntt_ary3[i], mod1, mod2, inv1, inv2);
+            out[i] = qcrt<mod1, mod2>(ntt_ary1[i], ntt_ary3[i]);
         } // 使用中国剩余定理变换
         delete[] ntt_ary3;
     }

@@ -427,21 +427,19 @@ namespace hint_arithm
         constexpr UINT_64 mod1 = NTT_MOD1, mod2 = NTT_MOD2;
         constexpr UINT_64 root1 = NTT_ROOT1, root2 = NTT_ROOT2;
 
-        hint_transform::ntt_dif<mod1, root1>(ntt_ary1, ntt_len, false);
-        hint_transform::ntt_dif<mod2, root2>(ntt_ary2, ntt_len, false);
-        hint_transform::ntt_dif<mod1, root1>(ntt_ary3, ntt_len, false);
-        hint_transform::ntt_dif<mod2, root2>(ntt_ary4, ntt_len, false);
+        hint_transform::ntt<mod1, root1>(ntt_ary1, ntt_len);
+        hint_transform::ntt<mod2, root2>(ntt_ary2, ntt_len);
+        hint_transform::ntt<mod1, root1>(ntt_ary3, ntt_len);
+        hint_transform::ntt<mod2, root2>(ntt_ary4, ntt_len);
         hint::ary_mul_mod<mod1>(ntt_ary1, ntt_ary3, ntt_ary1, ntt_len);
         hint::ary_mul_mod<mod2>(ntt_ary2, ntt_ary4, ntt_ary2, ntt_len);
-        hint_transform::intt_dit<mod1, root1>(ntt_ary1, ntt_len, false);
-        hint_transform::intt_dit<mod2, root2>(ntt_ary2, ntt_len, false);
+        hint_transform::intt<mod1, root1>(ntt_ary1, ntt_len);
+        hint_transform::intt<mod2, root2>(ntt_ary2, ntt_len);
 
-        constexpr UINT_64 inv1 = qpow(mod1, mod2 - 2, mod2);
-        constexpr UINT_64 inv2 = qpow(mod2, mod1 - 2, mod1);
         hint::UINT_64 carry = 0;
         for (size_t i = 0; i < conv_res_len; i++)
         {
-            carry += qcrt(ntt_ary1[i], ntt_ary2[i], mod1, mod2, inv1, inv2);
+            carry += qcrt<mod1, mod2>(ntt_ary1[i], ntt_ary2[i]);
             std::tie(carry, out[i]) = div_mod(carry, base);
         }
         out[conv_res_len] = carry % base;
@@ -465,23 +463,20 @@ namespace hint_arithm
 
         constexpr UINT_64 mod1 = NTT_MOD1, mod2 = NTT_MOD2;
         constexpr UINT_64 root1 = NTT_ROOT1, root2 = NTT_ROOT2;
-        constexpr UINT_64 iroot1 = qpow(root1, mod1 - 2, mod1);
-        constexpr UINT_64 iroot2 = qpow(root2, mod2 - 2, mod2);
 
-        hint_transform::ntt_dif<mod1, root1>(ntt_ary1, ntt_len);
-        hint_transform::ntt_dif<mod2, root2>(ntt_ary2, ntt_len);
+        hint_transform::ntt<mod1, root1>(ntt_ary1, ntt_len);
+        hint_transform::ntt<mod2, root2>(ntt_ary2, ntt_len);
 
         hint::ary_mul_mod<mod1>(ntt_ary1, ntt_ary1, ntt_ary1, ntt_len);
         hint::ary_mul_mod<mod2>(ntt_ary2, ntt_ary2, ntt_ary2, ntt_len);
 
-        hint_transform::intt_dit<mod1, iroot1>(ntt_ary1, ntt_len);
-        hint_transform::intt_dit<mod2, iroot2>(ntt_ary2, ntt_len);
-        constexpr UINT_64 inv1 = qpow(mod1, mod2 - 2, mod2);
-        constexpr UINT_64 inv2 = qpow(mod2, mod1 - 2, mod1);
+        hint_transform::intt<mod1, root1>(ntt_ary1, ntt_len);
+        hint_transform::intt<mod2, root2>(ntt_ary2, ntt_len);
+
         hint::UINT_64 carry = 0;
         for (size_t i = 0; i < conv_res_len; i++)
         {
-            carry += qcrt(ntt_ary1[i], ntt_ary2[i], mod1, mod2, inv1, inv2);
+            carry += qcrt<mod1, mod2>(ntt_ary1[i], ntt_ary2[i]);
             std::tie(carry, out[i]) = div_mod(carry, base);
         }
         out[conv_res_len] = carry % base;
@@ -587,22 +582,22 @@ namespace hint_arithm
     {
         len1 = ary_true_len(in1, len1);
         len2 = ary_true_len(in2, len2);
-        if (len1 + len2 <= 48 || len1 * len2 < (len1 + len2) * std::log2(len1 + len2))
-        {
-            normal_mul(in1, in2, out, len1, len2, base);
-        }
-        else if (len1 + len2 - 1 <= (1 << hint_transform::lut_max_rank))
-        {
-            fft_mul(in1, in2, out, len1, len2, base);
-        }
-        else if (len1 + len2 - 1 <= NTT_MAX_LEN)
+        // if (len1 + len2 <= 48 || len1 * len2 < (len1 + len2) * std::log2(len1 + len2))
+        // {
+        //     normal_mul(in1, in2, out, len1, len2, base);
+        // }
+        // else if (len1 + len2 - 1 <= (1 << hint_transform::lut_max_rank))
+        // {
+        //     fft_mul(in1, in2, out, len1, len2, base);
+        // }
+        // else if (len1 + len2 - 1 <= NTT_MAX_LEN)
         {
             ntt_mul(in1, in2, out, len1, len2, base);
         }
-        else
-        {
-            karatsuba_mul(in1, in2, out, len1, len2, base);
-        }
+        // else
+        // {
+        //     karatsuba_mul(in1, in2, out, len1, len2, base);
+        // }
     }
     // 高精度平方
     template <typename T>
