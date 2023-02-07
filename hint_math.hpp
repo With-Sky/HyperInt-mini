@@ -1691,19 +1691,19 @@ namespace hint
             ary_copy(ntt_ary4, ntt_ary2, ntt_len);
         }
 
-        hint_transform::ntt_dif<mod1, root1>(ntt_ary1, ntt_len, false);
-        hint_transform::ntt_dif<mod2, root2>(ntt_ary3, ntt_len, false);
+        hint_transform::ntt<mod1, root1>(ntt_ary1, ntt_len);
+        hint_transform::ntt<mod2, root2>(ntt_ary3, ntt_len);
         if (ntt_ary1 != ntt_ary2)
         {
-            hint_transform::ntt_dif<mod1, root1>(ntt_ary2, ntt_len, false);
-            hint_transform::ntt_dif<mod2, root2>(ntt_ary4, ntt_len, false);
+            hint_transform::ntt<mod1, root1>(ntt_ary2, ntt_len);
+            hint_transform::ntt<mod2, root2>(ntt_ary4, ntt_len);
         }
 
         ary_mul_mod<mod1>(ntt_ary2, ntt_ary1, ntt_ary1, ntt_len);
         ary_mul_mod<mod2>(ntt_ary4, ntt_ary3, ntt_ary3, ntt_len); // 每一位相乘
 
-        hint_transform::ntt_dit<mod1, root1>(ntt_ary1, ntt_len, false);
-        hint_transform::ntt_dit<mod2, root2>(ntt_ary3, ntt_len, false);
+        hint_transform::intt<mod1, root1>(ntt_ary1, ntt_len);
+        hint_transform::intt<mod2, root2>(ntt_ary3, ntt_len);
 
         for (size_t i = 0; i < ntt_len; i++)
         {

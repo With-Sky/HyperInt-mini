@@ -582,22 +582,22 @@ namespace hint_arithm
     {
         len1 = ary_true_len(in1, len1);
         len2 = ary_true_len(in2, len2);
-        // if (len1 + len2 <= 48 || len1 * len2 < (len1 + len2) * std::log2(len1 + len2))
-        // {
-        //     normal_mul(in1, in2, out, len1, len2, base);
-        // }
-        // else if (len1 + len2 - 1 <= (1 << hint_transform::lut_max_rank))
-        // {
-        //     fft_mul(in1, in2, out, len1, len2, base);
-        // }
-        // else if (len1 + len2 - 1 <= NTT_MAX_LEN)
+        if (len1 + len2 <= 48 || len1 * len2 < (len1 + len2) * std::log2(len1 + len2))
+        {
+            normal_mul(in1, in2, out, len1, len2, base);
+        }
+        else if (len1 + len2 - 1 <= (1 << hint_transform::lut_max_rank))
+        {
+            fft_mul(in1, in2, out, len1, len2, base);
+        }
+        else if (len1 + len2 - 1 <= NTT_MAX_LEN)
         {
             ntt_mul(in1, in2, out, len1, len2, base);
         }
-        // else
-        // {
-        //     karatsuba_mul(in1, in2, out, len1, len2, base);
-        // }
+        else
+        {
+            karatsuba_mul(in1, in2, out, len1, len2, base);
+        }
     }
     // 高精度平方
     template <typename T>
@@ -642,7 +642,7 @@ namespace hint_arithm
         {
             return;
         }
-        hintvector<T> prod(block_size + len2);
+        hintvector<T> prod(block_size + len2, 0);
         size_t mul_len = len + len2;
         while (len < len1)
         {
