@@ -626,6 +626,11 @@ namespace hint_arithm
     constexpr void abs_mul_balance(const T in1[], const T in2[], T out[],
                                    size_t len1, size_t len2, const INT_64 base)
     {
+        if (len1 + len2 <= 48 || len1 * len2 < (len1 + len2) * std::log2(len1 + len2))
+        {
+            normal_mul(in1, in2, out, len1, len2, base);
+            return;
+        }
         if (len1 < len2)
         {
             std::swap(in1, in2);
@@ -644,13 +649,15 @@ namespace hint_arithm
         }
         hintvector<T> prod(block_size + len2, 0);
         size_t mul_len = len + len2;
-        while (len < len1)
+        while (len + block_size < len1)
         {
             abs_mul(in1 + len, in2, prod.type_ptr(), block_size, len2, base);
             abs_add(out + len, prod.type_ptr(), out + len, mul_len - block_size, block_size + len2, base);
             mul_len = block_size + len2;
             len += block_size;
         }
+        abs_mul(in1 + len, in2, prod.type_ptr(), block_size, len2, base);
+        abs_add<false>(out + len, prod.type_ptr(), out + len, mul_len - block_size, block_size + len2, base);
     }
     // 高精度乘低精度
     template <bool is_carry = true, typename T>
@@ -1438,6 +1445,36 @@ public:
 
         result.data.set_true_len();
         result.change_sign(is_neg() != input.is_neg());
+        return result;
+    }
+    Integer power(uint64_t n) const
+    {
+        Integer result = 1;
+        Integer tmp = *this;
+        while (n > 0)
+        {
+            if ((n & 1) != 0)
+            {
+                result = result * tmp;
+            }
+            tmp = tmp * tmp;
+            n >>= 1;
+        }
+        return result;
+    }
+    Integer power(uint64_t n, const Integer &mod) const
+    {
+        Integer result = 1;
+        Integer tmp = *this;
+        while (n > 0)
+        {
+            if ((n & 1) != 0)
+            {
+                result = result * tmp % mod;
+            }
+            tmp = tmp * tmp % mod;
+            n >>= 1;
+        }
         return result;
     }
 };
