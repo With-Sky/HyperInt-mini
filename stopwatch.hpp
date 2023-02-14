@@ -1,5 +1,5 @@
-#include <chrono>
 #pragma once
+#include <chrono>
 class StopWatch
 {
 private:
@@ -28,14 +28,14 @@ public:
 		reset();
 		is_start = true;
 		is_stop = false;
-		begin = std::chrono::high_resolution_clock::now();
+		begin = std::chrono::system_clock::now();
 	}
 	void stop()
 	{
 		if (is_start)
 		{
 			is_stop = true;
-			end = std::chrono::high_resolution_clock::now();
+			end = std::chrono::system_clock::now();
 			auto delta_time = std::chrono::duration_cast<std::chrono::microseconds>(end - begin);
 			tick = delta_time.count();
 		}
@@ -51,7 +51,7 @@ public:
 		if (!is_stop)
 		{
 			stop();
-			is_stop = true;
+			is_stop = false;
 		}
 		return (double)tick / rate;
 	}
