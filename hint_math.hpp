@@ -57,7 +57,7 @@ namespace hint
 
 #ifdef MULTITHREAD
     const UINT_32 hint_threads = std::thread::hardware_concurrency();
-    const UINT_32 log2_threads = std::ceil(std::log2(hint_threads));
+    const UINT_32 log2_threads = std::ceil(hint_log2(hint_threads));
     std::atomic<UINT_32> cur_ths;
 #endif
     double cas(double x)
@@ -67,16 +67,40 @@ namespace hint
     /// @brief 生成不大于n的最大的2的幂次的数
     /// @param n
     /// @return 不大于n的最大的2的幂次的数
-    inline UINT_64 max_2pow(UINT_64 n)
+    template <typename T>
+    constexpr T max_2pow(T n)
     {
-        return 1ull << static_cast<UINT_16>(std::floor(std::log2(n)));
+        T res = 1;
+        res <<= (sizeof(T) * 8 - 1);
+        while (res > n)
+        {
+            res /= 2;
+        }
+        return res;
     }
     /// @brief 生成不小于n的最小的2的幂次的数
     /// @param n
     /// @return 不小于n的最小的2的幂次的数
-    inline UINT_64 min_2pow(UINT_64 n)
+    template <typename T>
+    constexpr T min_2pow(T n)
     {
-        return 1ull << static_cast<UINT_16>(std::ceil(std::log2(n)));
+        T res = 1;
+        while (res < n)
+        {
+            res *= 2;
+        }
+        return res;
+    }
+    template <typename T>
+    constexpr size_t hint_log2(T n)
+    {
+        T res = 0;
+        while (n > 1)
+        {
+            n /= 2;
+            res++;
+        }
+        return res;
     }
     template <typename T>
     constexpr bool is_neg(T x)
@@ -347,24 +371,40 @@ namespace hint
     }
     // 数组分块
     template <size_t CHUNK, typename T1, typename T2>
-    void ary_chunk_split(T1 input[], T2 output, size_t in_len)
+    void ary_chunk_split(T1 input[], T2 output[], size_t in_len)
     {
         // 将输入数组视为一整块连续的数据,从第一个比特开始,每CHUNK个bit为一组，依次放到输出结果数组中
+        if (sizeof(T1) < CHUNK)
+        {
+            return;
+        }
+        constexpr T1 MAX = (1 << (CHUNK - 1)) - 1 + (1 << (CHUNK - 1)); // 二进制CHUNK bit全为1的数
+
+        T1 mask = MAX;
+    }
+    // 分块合并
+    template <size_t CHUNK, typename T1, typename T2>
+    void ary_chunk_merge(T1 input[], T2 output[], size_t in_len)
+    {
+        // 将输入数组的元素视为一个个CHUNK bit的数据,从第一个比特开始,依次连续放到输出结果数组中
     }
     // FFT与类FFT变换的命名空间
     namespace hint_transform
     {
-        class UnitTable
+        class ComplexTable
         {
         private:
             Complex *table = nullptr;
-            INT_32 max_log_size = 3;
-            INT_32 cur_log_size = 3;
-            UnitTable(const UnitTable &) = delete;
-            UnitTable &operator=(const UnitTable &) = delete;
+            INT_32 max_log_size = 2;
+            INT_32 cur_log_size = 2;
+
+            static constexpr double PI = HINT_PI;
+
+            ComplexTable(const ComplexTable &) = delete;
+            ComplexTable &operator=(const ComplexTable &) = delete;
 
         public:
-            ~UnitTable()
+            ~ComplexTable()
             {
                 if (table != nullptr)
                 {
@@ -373,29 +413,28 @@ namespace hint
                 }
             }
             // 初始化可以生成平分圆1<<shift份产生的单位根的表
-            UnitTable(UINT_32 max_shift)
+            ComplexTable(UINT_32 max_shift)
             {
-                max_shift = std::max<size_t>(max_shift, 3);
+                max_shift = std::max<size_t>(max_shift, 2);
                 max_log_size = max_shift;
-                size_t ary_size = (1ull << (max_shift - 1)) - 2;
+                size_t ary_size = 1ull << (max_shift - 1);
                 table = new Complex[ary_size];
-                for (size_t pos = 0; pos < 2; pos++)
-                {
-                    table[pos] = unit_root(pos * HINT_PI / 4);
-                }
-                expend(max_shift - 3);
+                expend(max_shift);
             }
             void expend(INT_32 shift)
             {
-                shift = std::min(shift, max_log_size);
-                shift = std::max(shift, 4);
-                for (INT_32 i = cur_log_size - 1; i <= shift - 2; i++)
+                shift = std::max<INT_32>(shift, 3);
+                if (shift > max_log_size)
+                {
+                    throw("FFT length too long for lut\n");
+                }
+                for (INT_32 i = cur_log_size + 1; i <= shift; i++)
                 {
                     size_t len = 1ull << i;
-                    size_t begin = len - 2;
+                    len /= 4;
                     for (size_t pos = 0; pos < len; pos++)
                     {
-                        table[pos + begin] = unit_root(pos * HINT_PI / (len * 2));
+                        table[pos + len] = unit_root(pos * PI / (len * 2));
                     }
                 }
                 cur_log_size = std::max(cur_log_size, shift);
@@ -406,76 +445,88 @@ namespace hint
                 return std::polar<double>(1.0, theta);
             }
             // shift表示圆平分为1<<shift份,n表示第几个单位根
-            Complex get_complex(INT_32 shift, size_t n)
+            Complex get_complex(UINT_32 shift, size_t n) const
             {
                 size_t rank = 1ull << shift;
-                n &= (rank - 1);
-                size_t zone = (n << 2) >> shift; // 第几象限
-                if (((n << 2) & (rank - 1)) == 0)
+                const size_t rank_ff = rank - 1, quad_n = n << 2;
+                n &= rank_ff;
+                size_t zone = quad_n >> shift; // 第几象限
+                if ((quad_n & rank_ff) == 0)
                 {
-                    constexpr Complex ary[4] = {Complex(1, 0), Complex(0, 1), Complex(-1, 0), Complex(0, -1)};
-                    return ary[zone];
+                    static constexpr Complex ONES[4] = {Complex(1, 0), Complex(0, 1), Complex(-1, 0), Complex(0, -1)};
+                    return ONES[zone];
                 }
-                rank >>= 2;
-                const Complex *ptr = table + rank - 2;
+                const Complex *ptr = table + rank / 4;
                 Complex tmp;
-                switch (zone)
+                if ((zone & 2) == 0)
                 {
-                case 0:
-                    tmp = ptr[n];
-                    break;
-                case 1:
-                    tmp = ptr[(rank << 1) - n];
-                    tmp.real(-tmp.real());
-                    break;
-                case 2:
-                    tmp = -ptr[n - (rank << 1)];
-                    break;
-                case 3:
-                    tmp = std::conj(ptr[(rank << 2) - n]);
-                    break;
-                default:
-                    break;
+                    if ((zone & 1) == 0)
+                    {
+                        tmp = ptr[n];
+                    }
+                    else
+                    {
+                        tmp = ptr[(rank >> 1) - n];
+                        tmp.real(-tmp.real());
+                    }
+                }
+                else
+                {
+                    if ((zone & 1) == 0)
+                    {
+                        tmp = -ptr[n - (rank >> 1)];
+                    }
+                    else
+                    {
+                        tmp = ptr[rank - n];
+                        tmp.imag(-tmp.imag());
+                    }
                 }
                 return tmp;
             }
-            Complex get_complex_conj(INT_32 shift, size_t n)
+            // shift表示圆平分为1<<shift份,n表示第几个单位根的共轭
+            Complex get_complex_conj(UINT_32 shift, size_t n) const
             {
                 size_t rank = 1ull << shift;
-                n &= (rank - 1);
-                size_t zone = (n << 2) >> shift; // 第几象限
-                if (((n << 2) & (rank - 1)) == 0)
+                const size_t rank_ff = rank - 1, quad_n = n << 2;
+                n &= rank_ff;
+                size_t zone = quad_n >> shift; // 第几象限
+                if ((quad_n & rank_ff) == 0)
                 {
-                    constexpr Complex ary[4] = {Complex(1, 0), Complex(0, -1), Complex(-1, 0), Complex(0, 1)};
-                    return ary[zone];
+                    static constexpr Complex ONES_CONJ[4] = {Complex(1, 0), Complex(0, -1), Complex(-1, 0), Complex(0, 1)};
+                    return ONES_CONJ[zone];
                 }
-                rank >>= 2;
-                const Complex *ptr = table + rank - 2;
                 Complex tmp;
-                switch (zone)
+                const Complex *ptr = table + rank / 4;
+                if ((zone & 2) == 0)
                 {
-                case 0:
-                    tmp = ptr[n];
-                    tmp.imag(-tmp.imag());
-                    break;
-                case 1:
-                    tmp = -ptr[(rank << 1) - n];
-                    break;
-                case 2:
-                    tmp = ptr[n - (rank << 1)];
-                    tmp.real(-tmp.real());
-                    break;
-                case 3:
-                    tmp = ptr[(rank << 2) - n];
-                    break;
-                default:
-                    break;
+                    if ((zone & 1) == 0)
+                    {
+                        tmp = ptr[n];
+                        tmp.imag(-tmp.imag());
+                    }
+                    else
+                    {
+                        tmp = -ptr[(rank / 2) - n];
+                    }
+                }
+                else
+                {
+                    if ((zone & 1) == 0)
+                    {
+                        tmp = ptr[n - (rank / 2)];
+                        tmp.real(-tmp.real());
+                    }
+                    else
+                    {
+                        tmp = ptr[rank - n];
+                    }
                 }
                 return tmp;
             }
         };
         constexpr size_t lut_max_rank = 23;
-        UnitTable TABLE(lut_max_rank); // 初始化fft表
+        ComplexTable TABLE(lut_max_rank); // 初始化fft表
         // 二进制逆序
         template <typename T>
         void binary_inverse_swap(T &ary, size_t len)
@@ -497,10 +548,10 @@ namespace hint
             }
         }
         // 四进制逆序
-        template <size_t BATCH = 1, typename SizeType = UINT_32, typename T>
+        template <typename SizeType = UINT_32, typename T>
         void quaternary_inverse_swap(T &ary, size_t len)
         {
-            SizeType log_n = std::log2(len);
+            SizeType log_n = hint_log2(len);
             SizeType *rev = new SizeType[len / 4];
             rev[0] = 0;
             for (SizeType i = 1; i < len; i++)
@@ -512,10 +563,7 @@ namespace hint
                 }
                 if (i < index)
                 {
-                    for (size_t j = 0; j < BATCH; j++)
-                    {
-                        std::swap(ary[i * BATCH + j], ary[index * BATCH + j]);
-                    }
+                    std::swap(ary[i], ary[index]);
                 }
             }
             delete[] rev;
@@ -549,12 +597,12 @@ namespace hint
             Complex t2 = tmp2 + tmp4;
             Complex t3 = tmp1 - tmp3;
             Complex t4 = tmp2 - tmp4;
-            t4 = Complex(-t4.imag(), t4.real());
+            t4 = Complex(t4.imag(), -t4.real());
 
             input[pos] = t1 + t2;
-            input[pos + rank] = t3 - t4;
+            input[pos + rank] = t3 + t4;
             input[pos + rank * 2] = t1 - t2;
-            input[pos + rank * 3] = t3 + t4;
+            input[pos + rank * 3] = t3 - t4;
         }
         // fft基4频率抽取蝶形变换
         inline void fft_radix4_dif_butterfly(Complex omega, Complex omega_sqr, Complex omega_cube,
@@ -569,12 +617,48 @@ namespace hint
             Complex t2 = tmp2 + tmp4;
             Complex t3 = tmp1 - tmp3;
             Complex t4 = tmp2 - tmp4;
-            t4 = Complex(-t4.imag(), t4.real());
+            t4 = Complex(t4.imag(), -t4.real());
 
             input[pos] = (t1 + t2);
-            input[pos + rank] = (t3 - t4) * omega;
+            input[pos + rank] = (t3 + t4) * omega;
             input[pos + rank * 2] = (t1 - t2) * omega_sqr;
-            input[pos + rank * 3] = (t3 + t4) * omega_cube;
+            input[pos + rank * 3] = (t3 - t4) * omega_cube;
+        }
+        // fft分裂基时间抽取蝶形变换
+        inline void fft_splt_radix_dit_butterfly(Complex omega, Complex omega_cube,
+                                                 Complex *input, size_t pos, size_t rank)
+        {
+            Complex tmp1 = input[pos];
+            Complex tmp2 = input[pos + rank];
+            Complex tmp3 = input[pos + rank * 2] * omega;
+            Complex tmp4 = input[pos + rank * 3] * omega_cube;
+
+            Complex tmp5 = tmp3 + tmp4;
+            Complex tmp6 = tmp3 - tmp4;
+            tmp6 = Complex(tmp6.imag(), -tmp6.real());
+
+            input[pos] = tmp1 + tmp5;
+            input[pos + rank] = tmp2 + tmp6;
+            input[pos + rank * 2] = tmp1 - tmp5;
+            input[pos + rank * 3] = tmp2 - tmp6;
+        }
+        // fft分裂基频率抽取蝶形变换
+        inline void fft_splt_radix_dif_butterfly(Complex omega, Complex omega_cube,
+                                                 Complex *input, size_t pos, size_t rank)
+        {
+            Complex tmp1 = input[pos];
+            Complex tmp2 = input[pos + rank];
+            Complex tmp3 = input[pos + rank * 2];
+            Complex tmp4 = input[pos + rank * 3];
+
+            Complex tmp5 = tmp3 + tmp4;
+            Complex tmp6 = tmp3 - tmp4;
+            tmp6 = Complex(tmp6.imag(), -tmp6.real());
+
+            input[pos] = tmp1 + tmp5;
+            input[pos + rank] = tmp2 + tmp6;
+            input[pos + rank * 2] = (tmp1 - tmp5) * omega;
+            input[pos + rank * 3] = (tmp2 - tmp6) * omega_cube;
         }
         // 2点fft
         inline void fft_2point(Complex &sum, Complex &diff)
@@ -647,7 +731,7 @@ namespace hint
         // 基4快速傅里叶变换,模板,学习用
         void fft_radix4_dit(Complex *input, size_t fft_len)
         {
-            size_t log4_len = std::log2(fft_len) / 2;
+            size_t log4_len = hint_log2(fft_len) / 2;
             fft_len = 1ull << (log4_len * 2);
             quaternary_inverse_swap(input, fft_len);
             for (size_t pos = 0; pos < fft_len; pos += 4)
@@ -677,14 +761,9 @@ namespace hint
                 }
             }
         }
-        // 基2查表快速傅里叶变换
+        // 基2时间抽取查表快速傅里叶变换
         void fft_radix2_dit_lut(Complex *input, size_t fft_len, bool bit_inv = true)
         {
-            fft_len = max_2pow(fft_len);
-            if (fft_len > (1ull << lut_max_rank))
-            {
-                throw("FFT length too long for lut\n");
-            }
             if (fft_len <= 1)
             {
                 return;
@@ -698,12 +777,13 @@ namespace hint
             {
                 binary_inverse_swap(input, fft_len);
             }
+            TABLE.expend(hint_log2(fft_len));
             for (size_t i = 0; i < fft_len; i += 2)
             {
                 fft_2point(input[i], input[i + 1]);
             }
             INT_32 shift = 2;
-            for (size_t rank = 2; rank < fft_len / 4; rank *= 2)
+            for (size_t rank = 2; rank < fft_len / 2; rank *= 2)
             {
                 size_t gap = rank * 2;
                 for (size_t begin = 0; begin < fft_len; begin += (gap * 2))
@@ -719,29 +799,16 @@ namespace hint
                 }
                 shift++;
             }
-            for (size_t rank = fft_len / 4; rank < fft_len; rank *= 2)
+            fft_len /= 2;
+            for (size_t pos = 0; pos < fft_len; pos++)
             {
-                size_t gap = rank * 2;
-                for (size_t begin = 0; begin < fft_len; begin += gap)
-                {
-                    fft_2point(input[begin], input[begin + rank]);
-                    for (size_t pos = begin + 1; pos < begin + rank; pos++)
-                    {
-                        Complex omega = TABLE.get_complex_conj(shift, pos - begin);
-                        fft_radix2_dit_butterfly(omega, input, pos, rank);
-                    }
-                }
-                shift++;
+                Complex omega = TABLE.get_complex_conj(shift, pos);
+                fft_radix2_dit_butterfly(omega, input, pos, fft_len);
             }
         }
-        // 基2查表快速傅里叶变换
+        // 基2频率抽取查表快速傅里叶变换
         void fft_radix2_dif_lut(Complex *input, size_t fft_len, bool bit_inv = true)
         {
-            fft_len = max_2pow(fft_len);
-            if (fft_len > (1ull << lut_max_rank))
-            {
-                throw("FFT length too long for lut\n");
-            }
             if (fft_len <= 1)
             {
                 return;
@@ -751,26 +818,24 @@ namespace hint
                 fft_2point(input[0], input[1]);
                 return;
             }
-            INT_32 shift = std::log2(fft_len);
-            for (size_t rank = fft_len / 2, gap; rank > fft_len / 4; rank /= 2)
+            INT_32 shift = hint_log2(fft_len);
+            TABLE.expend(shift);
+            fft_len /= 2;
+            for (size_t pos = 0; pos < fft_len; pos++)
             {
-                gap = rank * 2;
-                for (size_t begin = 0; begin < fft_len; begin += gap)
-                {
-                    for (size_t pos = begin; pos < begin + rank; pos++)
-                    {
-                        Complex omega = TABLE.get_complex_conj(shift, pos - begin);
-                        fft_radix2_dif_butterfly(omega, input, pos, rank);
-                    }
-                }
-                shift--;
+                Complex omega = TABLE.get_complex_conj(shift, pos);
+                fft_radix2_dif_butterfly(omega, input, pos, fft_len);
             }
-            for (size_t rank = fft_len / 4, gap; rank > 1; rank /= 2)
+            fft_len *= 2;
+            shift--;
+            for (size_t rank = fft_len / 4; rank > 1; rank /= 2)
             {
-                gap = rank * 2;
-                for (size_t begin = 0; begin < fft_len; begin += gap * 2)
+                size_t gap = rank * 2;
+                for (size_t begin = 0; begin < fft_len; begin += (gap * 2))
                 {
-                    for (size_t pos = begin; pos < begin + rank; pos++)
+                    fft_2point(input[begin], input[begin + rank]);
+                    fft_2point(input[gap + begin], input[gap + begin + rank]);
+                    for (size_t pos = begin + 1; pos < begin + rank; pos++)
                     {
                         Complex omega = TABLE.get_complex_conj(shift, pos - begin);
                         fft_radix2_dif_butterfly(omega, input, pos, rank);
@@ -788,14 +853,12 @@ namespace hint
                 binary_inverse_swap(input, fft_len);
             }
         }
+        // 基4时间抽取查表快速傅里叶变换
         void fft_radix4_dit_lut(Complex *input, size_t fft_len, bool bit_inv = true)
         {
-            size_t log4_len = std::log2(fft_len) / 2;
+            size_t log4_len = hint_log2(fft_len) / 2;
+            TABLE.expend(log4_len * 2);
             fft_len = 1ull << (log4_len * 2);
-            if (fft_len > (1ull << lut_max_rank))
-            {
-                throw("FFT length too long for lut\n");
-            }
             if (fft_len <= 1)
             {
                 return;
@@ -827,14 +890,12 @@ namespace hint
                 shift += 2;
             }
         }
+        // 基4频率抽取查表快速傅里叶变换
         void fft_radix4_dif_lut(Complex *input, size_t fft_len, bool bit_inv = true)
         {
-            size_t log4_len = std::log2(fft_len) / 2;
+            size_t log4_len = hint_log2(fft_len) / 2;
+            TABLE.expend(log4_len * 2);
             fft_len = 1ull << (log4_len * 2);
-            if (fft_len > (1ull << lut_max_rank))
-            {
-                throw("FFT length too long for lut\n");
-            }
             if (fft_len <= 1)
             {
                 return;
@@ -862,7 +923,6 @@ namespace hint
                 }
                 shift -= 2;
             }
-
             for (size_t pos = 0; pos < fft_len; pos += 4)
             {
                 fft_4point(input, pos, 1);
@@ -872,170 +932,187 @@ namespace hint
                 quaternary_inverse_swap(input, fft_len);
             }
         }
-        // 批量基4fft,BATCH为1时为正常基4fft
-        template <size_t BATCH = 1>
-        void fft_radix4_batch(Complex *input, size_t fft_len, bool bit_inv = true)
+        // 基4分治频率抽取
+        void fft_dif_divr4(Complex *input, size_t fft_len, bool bit_inv = true)
         {
-            size_t log4_len = std::log2(fft_len) / 2;
-            fft_len = 1ull << (log4_len * 2);
-            if (fft_len > (1ull << lut_max_rank))
+            size_t quad_len = fft_len / 4;
+            size_t log_len = std::log2(fft_len);
+            TABLE.expend(log_len);
+            for (size_t i = 0; i < quad_len; i++)
             {
-                throw("FFT length too long for lut\n");
+                Complex omega = TABLE.get_complex_conj(log_len, i);
+                Complex omega_sqr = TABLE.get_complex_conj(log_len, i * 2);
+                Complex omega_cube = TABLE.get_complex_conj(log_len, i * 3);
+                fft_radix4_dif_butterfly(omega, omega_sqr, omega_cube, input, i, quad_len);
             }
+            fft_radix4_dif_lut(input, quad_len, false);
+            fft_radix4_dif_lut(input + quad_len, quad_len, false);
+            fft_radix4_dif_lut(input + quad_len * 2, quad_len, false);
+            fft_radix4_dif_lut(input + quad_len * 3, quad_len, false);
+            if (bit_inv)
+            {
+                quaternary_inverse_swap(input, fft_len);
+            }
+        }
+        // 基4分治时间抽取
+        void fft_dit_divr4(Complex *input, size_t fft_len, bool bit_inv = true)
+        {
+            size_t quad_len = fft_len / 4;
+            size_t log_len = std::log2(fft_len);
+            TABLE.expend(log_len);
+            if (bit_inv)
+            {
+                quaternary_inverse_swap(input, fft_len);
+            }
+            fft_radix4_dit_lut(input, quad_len, false);
+            fft_radix4_dit_lut(input + quad_len, quad_len, false);
+            fft_radix4_dit_lut(input + quad_len * 2, quad_len, false);
+            fft_radix4_dit_lut(input + quad_len * 3, quad_len, false);
+            for (size_t i = 0; i < quad_len; i++)
+            {
+                Complex omega = TABLE.get_complex_conj(log_len, i);
+                Complex omega_sqr = TABLE.get_complex_conj(log_len, i * 2);
+                Complex omega_cube = TABLE.get_complex_conj(log_len, i * 3);
+                fft_radix4_dit_butterfly(omega, omega_sqr, omega_cube, input, i, quad_len);
+            }
+        }
+        // 基2分治频率抽取
+        void fft_dif_divr2(Complex *input, size_t fft_len, bool bit_inv = true)
+        {
+            size_t half_len = fft_len / 2;
+            size_t log_len = std::log2(fft_len);
+            TABLE.expend(log_len);
+            for (size_t i = 0; i < half_len; i++)
+            {
+                Complex omega = TABLE.get_complex_conj(log_len, i);
+                fft_radix2_dif_butterfly(omega, input, i, half_len);
+            }
+            fft_dif_divr4(input, half_len, false);
+            fft_dif_divr4(input + half_len, half_len, false);
+            if (bit_inv)
+            {
+                quaternary_inverse_swap(input, half_len);
+                binary_inverse_swap(input, half_len);
+                Complex *ptr = input + half_len;
+                quaternary_inverse_swap(ptr, half_len);
+                binary_inverse_swap(ptr, half_len);
+                binary_inverse_swap(input, fft_len);
+            }
+        }
+        // 基2分治时间抽取
+        void fft_dit_divr2(Complex *input, size_t fft_len, bool bit_inv = true)
+        {
+            size_t half_len = fft_len / 2;
+            size_t log_len = std::log2(fft_len);
+            TABLE.expend(log_len);
+            if (bit_inv)
+            {
+                binary_inverse_swap(input, fft_len);
+                quaternary_inverse_swap(input, half_len);
+                binary_inverse_swap(input, half_len);
+                Complex *ptr = input + half_len;
+                quaternary_inverse_swap(ptr, half_len);
+                binary_inverse_swap(ptr, half_len);
+            }
+            fft_dit_divr4(input, half_len, false);
+            fft_dit_divr4(input + half_len, half_len, false);
+            for (size_t i = 0; i < half_len; i++)
+            {
+                Complex omega = TABLE.get_complex_conj(log_len, i);
+                fft_radix2_dit_butterfly(omega, input, i, half_len);
+            }
+        }
+        void fft_split_radix_dit(Complex *input, size_t fft_len)
+        {
+            if (fft_len <= (1 << 5))
+            {
+                fft_radix2_dit_lut(input, fft_len, false);
+                return;
+            }
+            size_t log_len = hint_log2(fft_len);
+            size_t half_len = fft_len / 2, quarter_len = fft_len / 4;
+            fft_split_radix_dit(input, half_len);
+            fft_split_radix_dit(input + half_len, quarter_len);
+            fft_split_radix_dit(input + half_len + quarter_len, quarter_len);
+            for (size_t i = 0; i < quarter_len; i++)
+            {
+                Complex omega = TABLE.get_complex_conj(log_len, i);
+                Complex omega_cube = TABLE.get_complex_conj(log_len, i * 3);
+                fft_splt_radix_dit_butterfly(omega, omega_cube, input, i, quarter_len);
+            }
+        }
+        void fft_split_radix_dif(Complex *input, size_t fft_len)
+        {
+            if (fft_len <= (1 << 5))
+            {
+                fft_radix2_dif_lut(input, fft_len, false);
+                return;
+            }
+            size_t log_len = hint_log2(fft_len);
+            size_t half_len = fft_len / 2, quarter_len = fft_len / 4;
+            for (size_t i = 0; i < quarter_len; i++)
+            {
+                Complex omega = TABLE.get_complex_conj(log_len, i);
+                Complex omega_cube = TABLE.get_complex_conj(log_len, i * 3);
+                fft_splt_radix_dif_butterfly(omega, omega_cube, input, i, quarter_len);
+            }
+            fft_split_radix_dif(input, half_len);
+            fft_split_radix_dif(input + half_len, quarter_len);
+            fft_split_radix_dif(input + half_len + quarter_len, quarter_len);
+        }
+        // 频率抽取fft
+        void fft_dif(Complex *input, size_t fft_len, bool bit_inv = true)
+        {
+            size_t log_len = hint_log2(fft_len);
+            TABLE.expend(log_len);
+            fft_len = 1ull << log_len;
+            if (fft_len <= 1)
+            {
+                return;
+            }
+            fft_split_radix_dif(input, fft_len);
+            if (bit_inv)
+            {
+                binary_inverse_swap(input, fft_len);
+            }
+        }
+        // 时间抽取fft
+        void fft_dit(Complex *input, size_t fft_len, bool bit_inv = true)
+        {
+            size_t log_len = hint_log2(fft_len);
+            TABLE.expend(log_len);
+            fft_len = 1ull << log_len;
             if (fft_len <= 1)
             {
                 return;
             }
             if (bit_inv)
             {
-                quaternary_inverse_swap<BATCH>(input, fft_len);
+                binary_inverse_swap(input, fft_len);
             }
-            for (size_t pos = 0; pos < fft_len; pos += 4)
-            {
-                for (size_t j = 0; j < BATCH; j++)
-                {
-                    fft_4point(input, j + pos * BATCH, BATCH);
-                }
-            }
-            UINT_32 shift = 4;
-            for (size_t rank = 4; rank < fft_len; rank *= 4)
-            {
-                size_t gap = rank * 4;
-                for (size_t begin = 0; begin < fft_len; begin += gap)
-                {
-                    for (size_t j = 0; j < BATCH; j++)
-                    {
-                        fft_4point(input, j + begin * BATCH, rank * BATCH);
-                    }
-                    for (size_t pos = begin + 1; pos < begin + rank; pos++)
-                    {
-                        size_t count = pos - begin;
-                        Complex omega = TABLE.get_complex_conj(shift, count);
-                        Complex omega_sqr = TABLE.get_complex_conj(shift, count * 2);
-                        Complex omega_cube = TABLE.get_complex_conj(shift, count * 3);
-                        for (size_t j = 0; j < BATCH; j++)
-                        {
-                            fft_radix4_dit_butterfly(omega, omega_sqr, omega_cube, input, j + pos * BATCH, rank * BATCH);
-                        }
-                    }
-                }
-                shift += 2;
-            }
-        }
-        // 使用2批量计算的非基4fft
-        void fft_radix2_bat2(Complex *input, size_t fft_len)
-        {
-            size_t log_len = std::log2(fft_len);
-            fft_len = 1ull << log_len;
-            if (fft_len > (1ull << lut_max_rank))
-            {
-                throw("FFT length too long for lut\n");
-            }
-            if (fft_len == 1)
-            {
-                return;
-            }
-            if (fft_len == 2)
-            {
-                fft_2point(input[0], input[1]);
-                return;
-            }
-            size_t sub_len = fft_len / 2;
-            fft_radix4_batch<2>(input, sub_len);
-            for (size_t i = 0; i < fft_len; i += 2)
-            {
-                Complex omega = TABLE.get_complex_conj(log_len, i / 2);
-                fft_radix2_dit_butterfly(omega, input, i, 1);
-            }
-            ary_interlace<2>(input, fft_len);
-        }
-        // 使用4批量计算的基4fft
-        void fft_radix4_bat4(Complex *input, size_t fft_len)
-        {
-            size_t log_len = std::log2(fft_len) / 2;
-            fft_len = 1ull << (log_len * 2);
-            if (fft_len > (1ull << lut_max_rank))
-            {
-                throw("FFT length too long for lut\n");
-            }
-            if (fft_len == 1)
-            {
-                return;
-            }
-            if (fft_len == 4)
-            {
-                fft_4point(input, 0, 1);
-                return;
-            }
-            log_len *= 2;
-            size_t quarter_len = fft_len / 4;
-            fft_radix4_batch<4>(input, quarter_len);
-            for (size_t i = 0; i < fft_len; i += 4)
-            {
-                Complex omega = TABLE.get_complex_conj(log_len, i / 4);
-                Complex omega_sqr = TABLE.get_complex_conj(log_len, i / 2);
-                Complex omega_cube = TABLE.get_complex_conj(log_len, i * 3 / 4);
-                fft_radix4_dit_butterfly(omega, omega_sqr, omega_cube, input, i, 1);
-            }
-            ary_interlace<4>(input, fft_len);
-        }
-        void fft_dif(Complex *input, size_t fft_len, bool r4_bit_inv = true)
-        {
-            size_t log_len = std::log2(fft_len);
-            fft_len = 1ull << log_len;
-            if (fft_len <= 1)
-            {
-                return;
-            }
-            TABLE.expend(log_len);
-            if (is_odd(log_len))
-            {
-                fft_radix2_bat2(input, fft_len);
-            }
-            else
-            {
-                fft_radix4_dif_lut(input, fft_len, r4_bit_inv);
-            }
-        }
-        void fft_dit(Complex *input, size_t fft_len, bool r4_bit_inv = true)
-        {
-            size_t log_len = std::log2(fft_len);
-            fft_len = 1ull << log_len;
-            if (fft_len <= 1)
-            {
-                return;
-            }
-            TABLE.expend(log_len);
-            if (is_odd(log_len))
-            {
-                fft_radix2_bat2(input, fft_len);
-            }
-            else
-            {
-                fft_radix4_dit_lut(input, fft_len, r4_bit_inv);
-            }
+            fft_split_radix_dit(input, fft_len);
         }
         /// @brief 查表快速傅里叶变换
         /// @param input 复数组
         /// @param fft_len 变换长度
         /// @param r4_bit_inv 基4是否进行比特逆序,与逆变换同时设为false可以提高性能
-        void fft_lut(Complex *input, size_t fft_len, bool r4_bit_inv = true)
+        void fft_lut(Complex *input, size_t fft_len, bool bit_inv = true)
         {
-            size_t log_len = std::log2(fft_len);
+            size_t log_len = hint_log2(fft_len);
             fft_len = 1ull << log_len;
             if (fft_len <= 1)
             {
                 return;
             }
-            fft_dit(input, fft_len, r4_bit_inv);
+            fft_radix2_dif_lut(input, fft_len, bit_inv);
         }
         /// @brief 查表快速傅里叶逆变换
         /// @param input 复数组
         /// @param fft_len 变换长度
         /// @param r4_bit_inv 基4是否进行比特逆序,与逆变换同时设为false可以提高性能
-        void ifft_lut(Complex *input, size_t fft_len, bool r4_bit_inv = true)
+        void ifft_lut(Complex *input, size_t fft_len, bool bit_inv = true)
         {
-            size_t log_len = std::log2(fft_len);
+            size_t log_len = hint_log2(fft_len);
             fft_len = 1ull << log_len;
             if (fft_len <= 1)
             {
@@ -1043,7 +1120,7 @@ namespace hint
             }
             fft_len = max_2pow(fft_len);
             fft_conj(input, fft_len);
-            fft_dif(input, fft_len, r4_bit_inv);
+            fft_radix2_dit_lut(input, fft_len, bit_inv);
             fft_conj(input, fft_len, fft_len);
         }
 
@@ -1058,7 +1135,7 @@ namespace hint
             {
                 return;
             }
-            UINT_32 log_len = std::log2(fht_len);
+            UINT_32 log_len = hint_log2(fht_len);
             TABLE.expend(log_len);
             binary_inverse_swap(input, fht_len);
             for (size_t i = 0; i < fht_len; i += 2)
@@ -1120,6 +1197,7 @@ namespace hint
                 input[i] /= len;
             }
         }
+
         constexpr UINT_64 add_mod(UINT_64 a, UINT_64 b, UINT_64 mod)
         {
             return a + b < mod ? a + b : a + b - mod;
@@ -1250,7 +1328,7 @@ namespace hint
             input[pos + rank * 2] = sub_mod(t1, t2, MOD);
             input[pos + rank * 3] = sub_mod(t3, t4, MOD);
         }
-        // 基2时间抽取ntt,未对数组做位逆序
+        // 基2时间抽取ntt
         template <UINT_64 MOD = 2281701377, UINT_64 G_ROOT = 3>
         void ntt_radix2_dit(UINT_32 *input, size_t ntt_len, bool bit_inv = false)
         {
@@ -1306,7 +1384,7 @@ namespace hint
                 }
             }
         }
-        // 基2频率抽取ntt,未对数组做位逆序
+        // 基2频率抽取ntt
         template <UINT_64 MOD = 2281701377, UINT_64 G_ROOT = 3>
         void ntt_radix2_dif(UINT_32 *input, size_t ntt_len, bool bit_inv = true)
         {
@@ -1322,21 +1400,13 @@ namespace hint
             }
             UINT_64 unit_omega = qpow(G_ROOT, (MOD - 1) / ntt_len, MOD);
             constexpr size_t THRESHOLD1 = 4;
-            for (size_t rank = ntt_len / 2; rank > ntt_len / THRESHOLD1; rank /= 2)
+            UINT_64 omega = 1;
+            for (size_t pos = 0; pos < ntt_len / 2; pos++)
             {
-                size_t gap = rank * 2;
-                for (size_t begin = 0; begin < ntt_len; begin += gap)
-                {
-                    ntt_2point<MOD>(input[begin], input[begin + rank]);
-                    UINT_64 omega = unit_omega;
-                    for (size_t pos = begin + 1; pos < begin + rank; pos++)
-                    {
-                        ntt_radix2_dif_butterfly<MOD>(omega, input, pos, rank);
-                        omega = omega * unit_omega % MOD;
-                    }
-                }
-                unit_omega = unit_omega * unit_omega % MOD;
+                ntt_radix2_dif_butterfly<MOD>(omega, input, pos, ntt_len / 2);
+                omega = omega * unit_omega % MOD;
             }
+            unit_omega = unit_omega * unit_omega % MOD;
             for (size_t rank = ntt_len / THRESHOLD1; rank > 1; rank /= 2)
             {
                 size_t gap = rank * 2;
@@ -1363,11 +1433,11 @@ namespace hint
                 binary_inverse_swap(input, ntt_len);
             }
         }
-        // 批量基4快速数论变换,默认BATCH为1时为普通基4变换
-        template <UINT_64 MOD = 2281701377, UINT_64 G_ROOT = 3, size_t BATCH = 1>
+        // 基4时间抽取ntt
+        template <UINT_64 MOD = 2281701377, UINT_64 G_ROOT = 3>
         void ntt_radix4_dit(UINT_32 *input, size_t ntt_len, bool bit_inv = true)
         {
-            size_t log4_len = std::log2(ntt_len) / 2;
+            size_t log4_len = hint_log2(ntt_len) / 2;
             ntt_len = 1ull << (log4_len * 2);
             if (ntt_len <= 1)
             {
@@ -1375,15 +1445,12 @@ namespace hint
             }
             if (bit_inv)
             {
-                quaternary_inverse_swap<BATCH>(input, ntt_len);
+                quaternary_inverse_swap(input, ntt_len);
             }
             constexpr UINT_64 quarter = qpow(G_ROOT, (MOD - 1) / 4, MOD); // 等价于复数的i
             for (size_t pos = 0; pos < ntt_len; pos += 4)
             {
-                for (size_t j = 0; j < BATCH; j++)
-                {
-                    ntt_4point<MOD>(input, quarter, j + pos * BATCH, BATCH);
-                }
+                ntt_4point<MOD>(input, quarter, pos, 1);
             }
             for (size_t rank = 4; rank < ntt_len; rank *= 4)
             {
@@ -1391,29 +1458,23 @@ namespace hint
                 UINT_64 unit_omega = qpow(G_ROOT, (MOD - 1) / gap, MOD);
                 for (size_t begin = 0; begin < ntt_len; begin += gap)
                 {
-                    for (size_t j = 0; j < BATCH; j++)
-                    {
-                        ntt_4point<MOD>(input, quarter, j + begin * BATCH, rank * BATCH);
-                    }
+                    ntt_4point<MOD>(input, quarter, begin, rank);
                     UINT_64 omega = unit_omega;
                     for (size_t pos = begin + 1; pos < begin + rank; pos++)
                     {
                         UINT_64 omega_sqr = omega * omega % MOD;
                         UINT_64 omega_cube = omega_sqr * omega % MOD;
-                        for (size_t j = 0; j < BATCH; j++)
-                        {
-                            ntt_radix4_dit_butterfly<MOD>(omega, omega_sqr, omega_cube, quarter, input, j + pos * BATCH, rank * BATCH);
-                        }
+                        ntt_radix4_dit_butterfly<MOD>(omega, omega_sqr, omega_cube, quarter, input, pos, rank);
                         omega = omega * unit_omega % MOD;
                     }
                 }
             }
         }
-        // 批量基4快速数论变换
-        template <UINT_64 MOD = 2281701377, UINT_64 G_ROOT = 3, size_t BATCH = 1>
+        // 基4频率抽取ntt
+        template <UINT_64 MOD = 2281701377, UINT_64 G_ROOT = 3>
         void ntt_radix4_dif(UINT_32 *input, size_t ntt_len, bool bit_inv = true)
         {
-            size_t log4_len = std::log2(ntt_len) / 2;
+            size_t log4_len = hint_log2(ntt_len) / 2;
             ntt_len = 1ull << (log4_len * 2);
             if (ntt_len <= 1)
             {
@@ -1422,10 +1483,7 @@ namespace hint
             constexpr UINT_64 quarter = qpow(G_ROOT, (MOD - 1) / 4, MOD); // 等价于复数的i
             if (ntt_len == 4)
             {
-                for (size_t j = 0; j < BATCH; j++)
-                {
-                    ntt_4point<MOD>(input, quarter, j, BATCH);
-                }
+                ntt_4point<MOD>(input, quarter, 0, 1);
                 return;
             }
             UINT_64 unit_omega = qpow(G_ROOT, (MOD - 1) / ntt_len, MOD);
@@ -1434,19 +1492,17 @@ namespace hint
                 size_t gap = rank * 4;
                 for (size_t begin = 0; begin < ntt_len; begin += (gap))
                 {
-                    for (size_t j = 0; j < BATCH; j++)
-                    {
-                        ntt_4point<MOD>(input, quarter, j + begin * BATCH, rank * BATCH);
-                    }
+
+                    ntt_4point<MOD>(input, quarter, begin, rank);
+
                     UINT_64 omega = unit_omega;
                     for (size_t pos = begin + 1; pos < begin + rank; pos++)
                     {
                         UINT_64 omega_sqr = omega * omega % MOD;
                         UINT_64 omega_cube = omega_sqr * omega % MOD;
-                        for (size_t j = 0; j < BATCH; j++)
-                        {
-                            ntt_radix4_dif_butterfly<MOD>(omega, omega_sqr, omega_cube, quarter, input, j + pos * BATCH, rank * BATCH);
-                        }
+
+                        ntt_radix4_dif_butterfly<MOD>(omega, omega_sqr, omega_cube, quarter, input, pos, rank);
+
                         omega = omega * unit_omega % MOD;
                     }
                 }
@@ -1455,33 +1511,12 @@ namespace hint
             }
             for (size_t pos = 0; pos < ntt_len; pos += 4)
             {
-                for (size_t j = 0; j < BATCH; j++)
-                {
-                    ntt_4point<MOD>(input, quarter, j + pos * BATCH, BATCH);
-                }
+                ntt_4point<MOD>(input, quarter, pos, 1);
             }
             if (bit_inv)
             {
-                quaternary_inverse_swap<BATCH>(input, ntt_len);
+                quaternary_inverse_swap(input, ntt_len);
             }
-        }
-        // 4批量计算基4ntt
-        template <UINT_64 MOD = 2281701377, UINT_64 G_ROOT = 3>
-        void ntt_radix4_bat4(UINT_32 *input, size_t ntt_len)
-        {
-            size_t quarter_len = ntt_len / 4;
-            ntt_radix4_dif<MOD, G_ROOT, 4>(input, quarter_len, true);
-            constexpr UINT_64 quarter = qpow(G_ROOT, (MOD - 1) / 4, MOD); // 等价于复数的i
-            const UINT_64 unit_omega = qpow(G_ROOT, (MOD - 1) / ntt_len, MOD);
-            UINT_64 omega = 1;
-            for (size_t i = 0; i < ntt_len; i += 4)
-            {
-                UINT_64 omega_sqr = omega * omega % MOD;
-                UINT_64 omega_cube = omega_sqr * omega % MOD;
-                ntt_radix4_dit_butterfly<MOD>(omega, omega_sqr, omega_cube, quarter, input, i, 1);
-                omega = omega * unit_omega % MOD;
-            }
-            ary_interlace<4>(input, ntt_len);
         }
         template <UINT_64 MOD = 2281701377, UINT_64 G_ROOT = 3>
         void ntt_dif(UINT_32 *input, size_t ntt_len, bool bit_inv = true)
@@ -1491,15 +1526,14 @@ namespace hint
             {
                 return;
             }
-            size_t log_len = std::log2(ntt_len);
+            size_t log_len = hint_log2(ntt_len);
             if (is_odd(log_len))
             {
                 ntt_radix2_dif<MOD, G_ROOT>(input, ntt_len, bit_inv);
             }
             else
             {
-                ntt_radix4_bat4<MOD, G_ROOT>(input, ntt_len);
-                // ntt_radix4_dif<MOD, G_ROOT>(input, ntt_len, bit_inv);
+                ntt_radix4_dif<MOD, G_ROOT>(input, ntt_len, bit_inv);
             }
         }
         template <UINT_64 MOD = 2281701377, UINT_64 G_ROOT = 3>
@@ -1510,15 +1544,14 @@ namespace hint
             {
                 return;
             }
-            size_t log_len = std::log2(ntt_len);
+            size_t log_len = hint_log2(ntt_len);
             if (is_odd(log_len))
             {
                 ntt_radix2_dit<MOD, G_ROOT>(input, ntt_len, bit_inv);
             }
             else
             {
-                ntt_radix4_bat4<MOD, G_ROOT>(input, ntt_len);
-                // ntt_radix4_dit<MOD, IG_ROOT>(input, ntt_len, bit_inv);
+                ntt_radix4_dit<MOD, G_ROOT>(input, ntt_len, bit_inv);
             }
         }
         // 双线程NTT
@@ -1575,8 +1608,6 @@ namespace hint
         /// @tparam G_ROOT 原根
         /// @param input 输入数组
         /// @param ntt_len 数组长度
-        /// @param is_intt 是否为逆变换
-        /// @param multi_threads 是否为多线程
         template <UINT_64 MOD = 2281701377, UINT_64 G_ROOT = 3>
         void ntt(UINT_32 *input, size_t ntt_len)
         {
@@ -1592,8 +1623,6 @@ namespace hint
         /// @tparam G_ROOT 原根
         /// @param input 输入数组
         /// @param ntt_len 数组长度
-        /// @param is_intt 是否为逆变换
-        /// @param multi_threads 是否为多线程
         template <UINT_64 MOD = 2281701377, UINT_64 G_ROOT = 3>
         void intt(UINT_32 *input, size_t ntt_len)
         {
@@ -1649,13 +1678,13 @@ namespace hint
     }
     inline void fft_convolution(Complex fft_ary1[], Complex fft_ary2[], Complex out[], size_t fft_len)
     {
-        hint_transform::fft_lut(fft_ary1, fft_len, true);
+        hint_transform::fft_lut(fft_ary1, fft_len, false);
         if (fft_ary1 != fft_ary2)
         {
-            hint_transform::fft_lut(fft_ary2, fft_len, true);
+            hint_transform::fft_lut(fft_ary2, fft_len, false);
         }
         ary_mul(fft_ary1, fft_ary2, out, fft_len);
-        hint_transform::ifft_lut(out, fft_len, true);
+        hint_transform::ifft_lut(out, fft_len, false);
     }
     void fht_convolution(double fht_ary1[], double fht_ary2[], double out[], size_t fht_len)
     {
