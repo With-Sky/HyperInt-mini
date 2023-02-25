@@ -625,8 +625,8 @@ namespace hint
             input[pos + rank * 3] = (t3 - t4) * omega_cube;
         }
         // fft分裂基时间抽取蝶形变换
-        inline void fft_splt_radix_dit_butterfly(Complex omega, Complex omega_cube,
-                                                 Complex *input, size_t pos, size_t rank)
+        inline void fft_split_radix_dit_butterfly(Complex omega, Complex omega_cube,
+                                                  Complex *input, size_t pos, size_t rank)
         {
             Complex tmp1 = input[pos];
             Complex tmp2 = input[pos + rank];
@@ -643,22 +643,22 @@ namespace hint
             input[pos + rank * 3] = tmp2 - tmp6;
         }
         // fft分裂基频率抽取蝶形变换
-        inline void fft_splt_radix_dif_butterfly(Complex omega, Complex omega_cube,
-                                                 Complex *input, size_t pos, size_t rank)
+        inline void fft_split_radix_dif_butterfly(Complex omega, Complex omega_cube,
+                                                  Complex *input, size_t pos, size_t rank)
         {
             Complex tmp1 = input[pos];
             Complex tmp2 = input[pos + rank];
             Complex tmp3 = input[pos + rank * 2];
             Complex tmp4 = input[pos + rank * 3];
 
-            Complex tmp5 = tmp3 + tmp4;
-            Complex tmp6 = tmp3 - tmp4;
-            tmp6 = Complex(tmp6.imag(), -tmp6.real());
+            Complex tmp5 = tmp1 - tmp3;
+            Complex tmp6 = tmp2 - tmp4;
+            tmp6 = Complex(-tmp6.imag(), tmp6.real());
 
-            input[pos] = tmp1 + tmp5;
-            input[pos + rank] = tmp2 + tmp6;
-            input[pos + rank * 2] = (tmp1 - tmp5) * omega;
-            input[pos + rank * 3] = (tmp2 - tmp6) * omega_cube;
+            input[pos] = tmp1 + tmp3;
+            input[pos + rank] = tmp2 + tmp4;
+            input[pos + rank * 2] = (tmp5 - tmp6) * omega;
+            input[pos + rank * 3] = (tmp5 + tmp6) * omega_cube;
         }
         // 2点fft
         inline void fft_2point(Complex &sum, Complex &diff)
@@ -1024,7 +1024,7 @@ namespace hint
         }
         void fft_split_radix_dit(Complex *input, size_t fft_len)
         {
-            if (fft_len <= (1 << 5))
+            if (fft_len <= (1 << 11))
             {
                 fft_radix2_dit_lut(input, fft_len, false);
                 return;
@@ -1038,12 +1038,12 @@ namespace hint
             {
                 Complex omega = TABLE.get_complex_conj(log_len, i);
                 Complex omega_cube = TABLE.get_complex_conj(log_len, i * 3);
-                fft_splt_radix_dit_butterfly(omega, omega_cube, input, i, quarter_len);
+                fft_split_radix_dit_butterfly(omega, omega_cube, input, i, quarter_len);
             }
         }
         void fft_split_radix_dif(Complex *input, size_t fft_len)
         {
-            if (fft_len <= (1 << 5))
+            if (fft_len <= (1 << 11))
             {
                 fft_radix2_dif_lut(input, fft_len, false);
                 return;
@@ -1054,7 +1054,7 @@ namespace hint
             {
                 Complex omega = TABLE.get_complex_conj(log_len, i);
                 Complex omega_cube = TABLE.get_complex_conj(log_len, i * 3);
-                fft_splt_radix_dif_butterfly(omega, omega_cube, input, i, quarter_len);
+                fft_split_radix_dif_butterfly(omega, omega_cube, input, i, quarter_len);
             }
             fft_split_radix_dif(input, half_len);
             fft_split_radix_dif(input + half_len, quarter_len);
@@ -1070,11 +1070,19 @@ namespace hint
             {
                 return;
             }
-            fft_split_radix_dif(input, fft_len);
-            if (bit_inv)
+            if (log_len % 2 == 0)
             {
-                binary_inverse_swap(input, fft_len);
+                fft_dif_divr4(input, fft_len, bit_inv);
             }
+            else
+            {
+                fft_dif_divr2(input, fft_len, bit_inv);
+            }
+            // fft_split_radix_dif(input, fft_len);
+            // if (bit_inv)
+            // {
+            //     binary_inverse_swap(input, fft_len);
+            // }
         }
         // 时间抽取fft
         void fft_dit(Complex *input, size_t fft_len, bool bit_inv = true)
@@ -1086,11 +1094,19 @@ namespace hint
             {
                 return;
             }
-            if (bit_inv)
+            if (log_len % 2 == 0)
             {
-                binary_inverse_swap(input, fft_len);
+                fft_dit_divr4(input, fft_len, bit_inv);
             }
-            fft_split_radix_dit(input, fft_len);
+            else
+            {
+                fft_dit_divr2(input, fft_len, bit_inv);
+            }
+            // if (bit_inv)
+            // {
+            //     binary_inverse_swap(input, fft_len);
+            // }
+            // fft_split_radix_dit(input, fft_len);
         }
         /// @brief 查表快速傅里叶变换
         /// @param input 复数组
@@ -1104,7 +1120,7 @@ namespace hint
             {
                 return;
             }
-            fft_radix2_dif_lut(input, fft_len, bit_inv);
+            fft_dif(input, fft_len, bit_inv);
         }
         /// @brief 查表快速傅里叶逆变换
         /// @param input 复数组
@@ -1120,7 +1136,7 @@ namespace hint
             }
             fft_len = max_2pow(fft_len);
             fft_conj(input, fft_len);
-            fft_radix2_dit_lut(input, fft_len, bit_inv);
+            fft_dit(input, fft_len, bit_inv);
             fft_conj(input, fft_len, fft_len);
         }
 
