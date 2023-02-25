@@ -364,20 +364,20 @@ namespace hint_arithm
         Complex *fft_ary = new Complex[fft_len];
         com_ary_combine_copy(fft_ary, in1, len1, in2, len2);
         hint_transform::fft_dif(fft_ary, fft_len, false);
+        double inv = -1 / (2.0 * fft_len);
         for (size_t i = 0; i < fft_len; i++)
         {
             Complex tmp = fft_ary[i];
-            fft_ary[i] = std::conj(tmp * tmp);
+            fft_ary[i] = std::conj(tmp * tmp * inv);
         }
         hint_transform::fft_dit(fft_ary, fft_len, false);
         hint::UINT_64 carry = 0;
-        double inv = 2 * fft_len;
         for (size_t i = 0; i < conv_res_len; i++)
         {
-            carry += static_cast<hint::UINT_64>(-fft_ary[i].imag() / inv + 0.5);
-            std::tie(carry, out[i]) = div_mod<UINT_64>(carry, base);
+            carry += static_cast<hint::UINT_64>(fft_ary[i].imag() + 0.5);
+            std::tie(carry, out[i]) = div_mod<UINT_64>(carry, 10000);
         }
-        out[conv_res_len] = carry % base;
+        out[conv_res_len] = carry % 10000;
         delete[] fft_ary;
     }
     // fht加速乘法
@@ -496,7 +496,6 @@ namespace hint_arithm
             std::swap(in1, in2);
             std::swap(len1, len2);
         }
-        // std::cin.get();
         if (len2 == 0 || in1 == nullptr || in2 == nullptr)
         {
             return;
