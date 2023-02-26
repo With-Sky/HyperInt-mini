@@ -419,7 +419,7 @@ namespace hint
                 max_log_size = max_shift;
                 size_t ary_size = 1ull << (max_shift - 1);
                 table = new Complex[ary_size];
-                // expend(max_shift);
+                expend(max_shift);
             }
             void expend(INT_32 shift)
             {
@@ -1022,18 +1022,15 @@ namespace hint
                 fft_radix2_dit_butterfly(omega, input, i, half_len);
             }
         }
-        void fft_split_radix_dit(Complex *input, size_t fft_len)
+        // 模板化时间抽取分裂基fft
+        template <size_t LEN>
+        void fft_split_radix_dit(Complex *input)
         {
-            if (fft_len <= (1 << 11))
-            {
-                fft_radix2_dit_lut(input, fft_len, false);
-                return;
-            }
-            size_t log_len = hint_log2(fft_len);
-            size_t half_len = fft_len / 2, quarter_len = fft_len / 4;
-            fft_split_radix_dit(input, half_len);
-            fft_split_radix_dit(input + half_len, quarter_len);
-            fft_split_radix_dit(input + half_len + quarter_len, quarter_len);
+            constexpr size_t log_len = hint_log2(LEN);
+            constexpr size_t half_len = LEN / 2, quarter_len = LEN / 4;
+            fft_split_radix_dit<half_len>(input);
+            fft_split_radix_dit<quarter_len>(input + half_len);
+            fft_split_radix_dit<quarter_len>(input + half_len + quarter_len);
             for (size_t i = 0; i < quarter_len; i++)
             {
                 Complex omega = TABLE.get_complex_conj(log_len, i);
@@ -1041,24 +1038,172 @@ namespace hint
                 fft_split_radix_dit_butterfly(omega, omega_cube, input, i, quarter_len);
             }
         }
-        void fft_split_radix_dif(Complex *input, size_t fft_len)
+        template <>
+        void fft_split_radix_dit<1 << 5>(Complex *input)
         {
-            if (fft_len <= (1 << 11))
-            {
-                fft_radix2_dif_lut(input, fft_len, false);
-                return;
-            }
-            size_t log_len = hint_log2(fft_len);
-            size_t half_len = fft_len / 2, quarter_len = fft_len / 4;
+            fft_radix2_dit_lut(input, 1 << 5, false);
+        }
+        template <>
+        void fft_split_radix_dit<1 << 6>(Complex *input)
+        {
+            fft_radix2_dit_lut(input, 1 << 6, false);
+        }
+        // 模板化频率抽取分裂基fft
+        template <size_t LEN>
+        void fft_split_radix_dif(Complex *input)
+        {
+            constexpr size_t log_len = hint_log2(LEN);
+            constexpr size_t half_len = LEN / 2, quarter_len = LEN / 4;
             for (size_t i = 0; i < quarter_len; i++)
             {
                 Complex omega = TABLE.get_complex_conj(log_len, i);
                 Complex omega_cube = TABLE.get_complex_conj(log_len, i * 3);
                 fft_split_radix_dif_butterfly(omega, omega_cube, input, i, quarter_len);
             }
-            fft_split_radix_dif(input, half_len);
-            fft_split_radix_dif(input + half_len, quarter_len);
-            fft_split_radix_dif(input + half_len + quarter_len, quarter_len);
+            fft_split_radix_dif<half_len>(input);
+            fft_split_radix_dif<quarter_len>(input + half_len);
+            fft_split_radix_dif<quarter_len>(input + half_len + quarter_len);
+        }
+        template <>
+        void fft_split_radix_dif<1 << 6>(Complex *input)
+        {
+            fft_radix2_dif_lut(input, 1 << 6, false);
+        }
+        template <>
+        void fft_split_radix_dif<1 << 7>(Complex *input)
+        {
+            fft_radix2_dif_lut(input, 1 << 7, false);
+        }
+
+        void fft_template_dit(Complex *input, size_t fft_len, bool bit_inv = true)
+        {
+            size_t log_len = hint_log2(fft_len);
+            if (bit_inv)
+            {
+                binary_inverse_swap(input, fft_len);
+            }
+            switch (log_len)
+            {
+            case 7:
+                fft_split_radix_dit<1 << 7>(input);
+                break;
+            case 8:
+                fft_split_radix_dit<1 << 8>(input);
+                break;
+            case 9:
+                fft_split_radix_dit<1 << 9>(input);
+                break;
+            case 10:
+                fft_split_radix_dit<1 << 10>(input);
+                break;
+            case 11:
+                fft_split_radix_dit<1 << 11>(input);
+                break;
+            case 12:
+                fft_split_radix_dit<1 << 12>(input);
+                break;
+            case 13:
+                fft_split_radix_dit<1 << 13>(input);
+                break;
+            case 14:
+                fft_split_radix_dit<1 << 14>(input);
+                break;
+            case 15:
+                fft_split_radix_dit<1 << 15>(input);
+                break;
+            case 16:
+                fft_split_radix_dit<1 << 16>(input);
+                break;
+            case 17:
+                fft_split_radix_dit<1 << 17>(input);
+                break;
+            case 18:
+                fft_split_radix_dit<1 << 18>(input);
+                break;
+            case 19:
+                fft_split_radix_dit<1 << 19>(input);
+                break;
+            case 20:
+                fft_split_radix_dit<1 << 20>(input);
+                break;
+            case 21:
+                fft_split_radix_dit<1 << 21>(input);
+                break;
+            case 22:
+                fft_split_radix_dit<1 << 22>(input);
+                break;
+            case 23:
+                fft_split_radix_dit<1 << 23>(input);
+                break;
+            default:
+                fft_radix2_dit_lut(input, fft_len, false);
+                break;
+            }
+        }
+        void fft_template_dif(Complex *input, size_t fft_len, bool bit_inv = true)
+        {
+            size_t log_len = hint_log2(fft_len);
+            switch (log_len)
+            {
+            case 7:
+                fft_split_radix_dif<1 << 7>(input);
+                break;
+            case 8:
+                fft_split_radix_dif<1 << 8>(input);
+                break;
+            case 9:
+                fft_split_radix_dif<1 << 9>(input);
+                break;
+            case 10:
+                fft_split_radix_dif<1 << 10>(input);
+                break;
+            case 11:
+                fft_split_radix_dif<1 << 11>(input);
+                break;
+            case 12:
+                fft_split_radix_dif<1 << 12>(input);
+                break;
+            case 13:
+                fft_split_radix_dif<1 << 13>(input);
+                break;
+            case 14:
+                fft_split_radix_dif<1 << 14>(input);
+                break;
+            case 15:
+                fft_split_radix_dif<1 << 15>(input);
+                break;
+            case 16:
+                fft_split_radix_dif<1 << 16>(input);
+                break;
+            case 17:
+                fft_split_radix_dif<1 << 17>(input);
+                break;
+            case 18:
+                fft_split_radix_dif<1 << 18>(input);
+                break;
+            case 19:
+                fft_split_radix_dif<1 << 19>(input);
+                break;
+            case 20:
+                fft_split_radix_dif<1 << 20>(input);
+                break;
+            case 21:
+                fft_split_radix_dif<1 << 21>(input);
+                break;
+            case 22:
+                fft_split_radix_dif<1 << 22>(input);
+                break;
+            case 23:
+                fft_split_radix_dif<1 << 23>(input);
+                break;
+            default:
+                fft_radix2_dif_lut(input, fft_len, false);
+                break;
+            }
+            if (bit_inv)
+            {
+                binary_inverse_swap(input, fft_len);
+            }
         }
         // 频率抽取fft
         void fft_dif(Complex *input, size_t fft_len, const bool bit_inv = true)
@@ -1070,19 +1215,15 @@ namespace hint
             {
                 return;
             }
-            if (log_len % 2 == 0)
-            {
-                fft_dif_divr4(input, fft_len, bit_inv);
-            }
-            else
-            {
-                fft_dif_divr2(input, fft_len, bit_inv);
-            }
-            // fft_split_radix_dif(input, fft_len);
-            // if (bit_inv)
+            // if (log_len % 2 == 0)
             // {
-            //     binary_inverse_swap(input, fft_len);
+            //     fft_dif_divr4(input, fft_len, bit_inv);
             // }
+            // else
+            // {
+            //     fft_dif_divr2(input, fft_len, bit_inv);
+            // }
+            fft_template_dif(input, fft_len, bit_inv);
         }
         // 时间抽取fft
         void fft_dit(Complex *input, size_t fft_len, const bool bit_inv = true)
@@ -1094,19 +1235,15 @@ namespace hint
             {
                 return;
             }
-            if (log_len % 2 == 0)
-            {
-                fft_dit_divr4(input, fft_len, bit_inv);
-            }
-            else
-            {
-                fft_dit_divr2(input, fft_len, bit_inv);
-            }
-            // if (bit_inv)
+            // if (log_len % 2 == 0)
             // {
-            //     binary_inverse_swap(input, fft_len);
+            //     fft_dit_divr4(input, fft_len, bit_inv);
             // }
-            // fft_split_radix_dit(input, fft_len);
+            // else
+            // {
+            //     fft_dit_divr2(input, fft_len, bit_inv);
+            // }
+            fft_template_dit(input, fft_len, bit_inv);
         }
         /// @brief 查表快速傅里叶变换
         /// @param input 复数组
