@@ -193,9 +193,9 @@ namespace hint_arithm
         return 0;
     }
     // 高精度加法
-    template <bool is_carry = true, typename T>
+    template <INT_64 BASE, bool is_carry = true, typename T>
     constexpr void abs_add(const T in1[], const T in2[], T out[],
-                           size_t len1, size_t len2, const UINT_64 base)
+                           size_t len1, size_t len2)
     {
         if (len1 < len2)
         {
@@ -207,27 +207,27 @@ namespace hint_arithm
         while (pos < len2)
         {
             carry += (in1[pos] + in2[pos]);
-            out[pos] = carry < base ? carry : carry - base;
-            carry = carry < base ? 0 : 1;
+            out[pos] = carry < BASE ? carry : carry - BASE;
+            carry = carry < BASE ? 0 : 1;
             pos++;
         }
         while (pos < len1 && carry > 0)
         {
             carry += in1[pos];
-            out[pos] = carry < base ? carry : carry - base;
-            carry = carry < base ? 0 : 1;
+            out[pos] = carry < BASE ? carry : carry - BASE;
+            carry = carry < BASE ? 0 : 1;
             pos++;
         }
         ary_copy(out + pos, in1 + pos, len1 - pos);
         if (is_carry)
         {
-            out[len1] = carry % base;
+            out[len1] = carry % BASE;
         }
     }
     // 高精度减法
-    template <typename T>
+    template <INT_64 BASE, typename T>
     constexpr void abs_sub(const T in1[], const T in2[], T out[],
-                           size_t len1, size_t len2, const INT_64 base)
+                           size_t len1, size_t len2)
     {
         if (len1 < len2)
         {
@@ -238,14 +238,14 @@ namespace hint_arithm
         while (pos < len2)
         {
             borrow += (static_cast<INT_64>(in1[pos]) - in2[pos]);
-            out[pos] = borrow < 0 ? borrow + base : borrow;
+            out[pos] = borrow < 0 ? borrow + BASE : borrow;
             borrow = borrow < 0 ? -1 : 0;
             pos++;
         }
         while (pos < len1 && borrow < 0)
         {
             borrow += in1[pos];
-            out[pos] = borrow < 0 ? borrow + base : borrow;
+            out[pos] = borrow < 0 ? borrow + BASE : borrow;
             borrow = borrow < 0 ? -1 : 0;
             pos++;
         }
@@ -312,9 +312,9 @@ namespace hint_arithm
         out[len1] = carry;
     }
     // 小学乘法
-    template <typename T>
+    template <UINT_64 BASE, typename T>
     void normal_mul(const T in1[], const T in2[], T out[],
-                    size_t len1, size_t len2, const UINT_64 base)
+                    size_t len1, size_t len2)
     {
         if (len1 < len2)
         {
@@ -340,7 +340,7 @@ namespace hint_arithm
                 for (size_t k = i + j; tmp > 0 && k < len1 + len2; k++)
                 {
                     tmp += res[k];
-                    std::tie(tmp, res[k]) = div_mod(tmp, base);
+                    std::tie(tmp, res[k]) = div_mod(tmp, BASE);
                 }
             }
         }
@@ -351,9 +351,9 @@ namespace hint_arithm
         }
     }
     // fft加速乘法
-    template <typename T>
+    template <UINT_64 BASE, typename T>
     void fft_mul(const T in1[], const T in2[], T out[],
-                 size_t len1, size_t len2, const UINT_64 base)
+                 size_t len1, size_t len2)
     {
         if (len1 == 0 || len2 == 0 || in1 == nullptr || in2 == nullptr)
         {
@@ -375,14 +375,14 @@ namespace hint_arithm
         for (size_t i = 0; i < conv_res_len; i++)
         {
             carry += static_cast<hint::UINT_64>(fft_ary[i].imag() + 0.5);
-            std::tie(carry, out[i]) = div_mod<UINT_64>(carry, 10000);
+            std::tie(carry, out[i]) = div_mod<UINT_64>(carry, BASE);
         }
-        out[conv_res_len] = carry % 10000;
+        out[conv_res_len] = carry % BASE;
         delete[] fft_ary;
     }
     // fht加速乘法
-    template <typename T>
-    void fht_sqr(const T in[], T out[], size_t len, const UINT_64 base)
+    template <UINT_64 BASE, typename T>
+    void fht_sqr(const T in[], T out[], size_t len)
     {
         if (len == 0 || in == nullptr)
         {
@@ -398,15 +398,15 @@ namespace hint_arithm
         for (size_t i = 0; i < conv_res_len; i++)
         {
             carry += static_cast<hint::UINT_64>(fht_ary[i + fht_len] + 0.5);
-            std::tie(carry, out[i]) = div_mod(carry, base);
+            std::tie(carry, out[i]) = div_mod(carry, BASE);
         }
-        out[conv_res_len] = carry % base;
+        out[conv_res_len] = carry % BASE;
         delete[] fht_ary;
     }
     // ntt加速乘法
-    template <typename T>
+    template <UINT_64 BASE, typename T>
     void ntt_mul(const T in1[], const T in2[], T out[],
-                 size_t len1, size_t len2, const UINT_64 base)
+                 size_t len1, size_t len2)
     {
         if (len1 == 0 || len2 == 0 || in1 == nullptr || in2 == nullptr)
         {
@@ -440,14 +440,14 @@ namespace hint_arithm
         for (size_t i = 0; i < conv_res_len; i++)
         {
             carry += qcrt<mod1, mod2>(ntt_ary1[i], ntt_ary2[i]);
-            std::tie(carry, out[i]) = div_mod(carry, base);
+            std::tie(carry, out[i]) = div_mod(carry, BASE);
         }
-        out[conv_res_len] = carry % base;
+        out[conv_res_len] = carry % BASE;
         delete[] ntt_ary1;
     }
     // ntt加速平方
-    template <typename T>
-    void ntt_sqr(const T in[], T out[], size_t len, const UINT_64 base)
+    template <UINT_64 BASE, typename T>
+    void ntt_sqr(const T in[], T out[], size_t len)
     {
         if (len == 0 || in == nullptr)
         {
@@ -477,15 +477,15 @@ namespace hint_arithm
         for (size_t i = 0; i < conv_res_len; i++)
         {
             carry += qcrt<mod1, mod2>(ntt_ary1[i], ntt_ary2[i]);
-            std::tie(carry, out[i]) = div_mod(carry, base);
+            std::tie(carry, out[i]) = div_mod(carry, BASE);
         }
-        out[conv_res_len] = carry % base;
+        out[conv_res_len] = carry % BASE;
         delete[] ntt_ary1;
     }
     // karatsuba乘法
-    template <typename T, typename NTT_Ty = UINT_16>
+    template <INT_64 BASE, typename NTT_Ty = UINT_16, typename T>
     constexpr void karatsuba_mul(const T in1[], const T in2[], T out[],
-                                 size_t len1, size_t len2, const INT_64 base)
+                                 size_t len1, size_t len2)
     {
         // (a*base^n+b)*(c*base^n+d) = a*c*base^2n+(a*d+b*c)*base^n+b*d
         // compute: a*c,b*d,(a+b)*(c+d),a*b+b*c = (a+b)*(c+d)-a*c-b*d
@@ -506,11 +506,11 @@ namespace hint_arithm
             const size_t ntt_len2 = len2 * std::max<size_t>(1, sizeof(T) / sizeof(NTT_Ty));
             if (in1 == in2 && len1 == len2)
             {
-                ntt_sqr<NTT_Ty>(in1, out, ntt_len1, base);
+                ntt_sqr<BASE, NTT_Ty>(in1, out, ntt_len1);
             }
             else
             {
-                ntt_mul<NTT_Ty>(in1, in2, out, ntt_len1, ntt_len2, base);
+                ntt_mul<BASE, NTT_Ty>(in1, in2, out, ntt_len1, ntt_len2);
             }
             return;
         }
@@ -533,15 +533,15 @@ namespace hint_arithm
         T *add_ab = add_mul.type_ptr();
         T *add_cd = add_ab + len_b + 1;
 
-        abs_add(in1, a_ptr, add_ab, len_b, len_a, base); // b+a
-        abs_add(in2, c_ptr, add_cd, len_d, len_c, base); // d+c
+        abs_add<BASE>(in1, a_ptr, add_ab, len_b, len_a); // b+a
+        abs_add<BASE>(in2, c_ptr, add_cd, len_d, len_c); // d+c
 
         size_t len_add_ab = ary_true_len(add_ab, len_b + 1);
         size_t len_add_cd = ary_true_len(add_cd, len_d + 1);
 
-        karatsuba_mul(a_ptr, c_ptr, mul_ac.type_ptr(), len_a, len_c, base);            // a*c
-        karatsuba_mul(in1, in2, mul_bd.type_ptr(), len_b, len_d, base);                // b*d
-        karatsuba_mul(add_ab, add_cd, add_mul.type_ptr(), len_b + 1, len_d + 1, base); //(a+b)*(c+d)
+        karatsuba_mul<BASE>(a_ptr, c_ptr, mul_ac.type_ptr(), len_a, len_c);            // a*c
+        karatsuba_mul<BASE>(in1, in2, mul_bd.type_ptr(), len_b, len_d);                // b*d
+        karatsuba_mul<BASE>(add_ab, add_cd, add_mul.type_ptr(), len_b + 1, len_d + 1); //(a+b)*(c+d)
         add_mul.change_length(len_add_ab + len_add_cd);
 
         len_ac = mul_ac.set_true_len();
@@ -569,65 +569,65 @@ namespace hint_arithm
             {
                 carry -= mul_bd[t_pos];
             }
-            INT_64 rem = carry % base;
-            carry = carry < 0 ? (carry + 1) / base - 1 : carry / base;
-            out[pos] = rem < 0 ? rem + base : rem;
+            INT_64 rem = carry % BASE;
+            carry = carry < 0 ? (carry + 1) / BASE - 1 : carry / BASE;
+            out[pos] = rem < 0 ? rem + BASE : rem;
         }
     }
     // 高精度乘法
-    template <typename T>
+    template <UINT_64 BASE, typename T>
     constexpr void abs_mul(const T in1[], const T in2[], T out[],
-                           size_t len1, size_t len2, const INT_64 base)
+                           size_t len1, size_t len2)
     {
         len1 = ary_true_len(in1, len1);
         len2 = ary_true_len(in2, len2);
         if (len1 + len2 <= 48 || len1 * len2 < (len1 + len2) * std::log2(len1 + len2))
         {
-            normal_mul(in1, in2, out, len1, len2, base);
+            normal_mul<BASE>(in1, in2, out, len1, len2);
         }
         else if (len1 + len2 - 1 <= (1 << hint_transform::lut_max_rank))
         {
-            fft_mul(in1, in2, out, len1, len2, base);
+            fft_mul<BASE>(in1, in2, out, len1, len2);
         }
         else if (len1 + len2 - 1 <= NTT_MAX_LEN)
         {
-            ntt_mul(in1, in2, out, len1, len2, base);
+            ntt_mul<BASE>(in1, in2, out, len1, len2);
         }
         else
         {
-            karatsuba_mul(in1, in2, out, len1, len2, base);
+            karatsuba_mul<BASE>(in1, in2, out, len1, len2);
         }
     }
     // 高精度平方
-    template <typename T>
-    constexpr void abs_sqr(const T in[], T out[], size_t len, const INT_64 base)
+    template <UINT_64 BASE, typename T>
+    constexpr void abs_sqr(const T in[], T out[], size_t len)
     {
         len = ary_true_len(in, len);
         if (len <= 24)
         {
-            normal_mul(in, in, out, len, len, base);
+            normal_mul<BASE>(in, in, out, len, len);
         }
         else if (len * 2 - 1 <= (1 << hint_transform::lut_max_rank))
         {
-            fht_sqr(in, out, len, base);
+            fht_sqr<BASE>(in, out, len);
         }
         else if (len * 2 - 1 <= NTT_MAX_LEN)
         {
-            ntt_sqr(in, out, len, base);
+            ntt_sqr<BASE>(in, out, len);
         }
         else
         {
-            karatsuba_mul(in, in, out, len, len, base);
+            karatsuba_mul<BASE>(in, in, out, len, len);
         }
     }
     // 高精度非平衡乘法
-    template <typename T>
+    template <UINT_64 BASE, typename T>
     constexpr void abs_mul_balance(const T in1[], const T in2[], T out[],
-                                   size_t len1, size_t len2, const INT_64 base)
+                                   size_t len1, size_t len2)
     {
         if (len1 + len2 <= 48 || len1 * len2 < (len1 + len2) * std::log2(len1 + len2))
         {
-            normal_mul(in1, in2, out, len1, len2, base);
+            normal_mul<BASE>(in1, in2, out, len1, len2);
             return;
         }
         if (len1 < len2)
@@ -640,7 +640,7 @@ namespace hint_arithm
         size_t len = len1 + block_size - count * block_size;
         if (len > 0)
         {
-            abs_mul(in1, in2, out, len, len2, base);
+            abs_mul<BASE>(in1, in2, out, len, len2);
         }
         if (len == len1)
         {
@@ -650,20 +650,20 @@ namespace hint_arithm
         size_t mul_len = len + len2;
         while (len + block_size < len1)
         {
-            abs_mul(in1 + len, in2, prod.type_ptr(), block_size, len2, base);
-            abs_add(out + len, prod.type_ptr(), out + len, mul_len - block_size, block_size + len2, base);
+            abs_mul<BASE>(in1 + len, in2, prod.type_ptr(), block_size, len2);
+            abs_add<BASE>(out + len, prod.type_ptr(), out + len, mul_len - block_size, block_size + len2);
             mul_len = block_size + len2;
             len += block_size;
         }
-        abs_mul(in1 + len, in2, prod.type_ptr(), block_size, len2, base);
-        abs_add<false>(out + len, prod.type_ptr(), out + len, mul_len - block_size, block_size + len2, base);
+        abs_mul<BASE>(in1 + len, in2, prod.type_ptr(), block_size, len2);
+        abs_add<BASE, false>(out + len, prod.type_ptr(), out + len, mul_len - block_size, block_size + len2);
     }
     // 高精度乘低精度
-    template <bool is_carry = true, typename T>
-    constexpr void abs_mul_num(const T in[], T num, T out[], size_t len, const UINT_64 base)
+    template <UINT_64 BASE, bool is_carry = true, typename T>
+    constexpr void abs_mul_num(const T in[], T num, T out[], size_t len)
     {
         len = ary_true_len(in, len);
-        num %= base;
+        num %= BASE;
         UINT_64 prod = 0;
         if (num == 1)
         {
@@ -674,7 +674,7 @@ namespace hint_arithm
             for (size_t i = 0; i < len; i++)
             {
                 prod += static_cast<UINT_64>(in[i]) * num;
-                std::tie(prod, out[i]) = div_mod<UINT_64>(prod, base);
+                std::tie(prod, out[i]) = div_mod<UINT_64>(prod, BASE);
             }
         }
         if (is_carry)
@@ -684,11 +684,11 @@ namespace hint_arithm
     }
 
     // 除以num的同时返回余数
-    template <typename T>
-    constexpr INT_64 abs_div_num(const T in[], T num, T out[], size_t len, const UINT_64 base)
+    template <UINT_64 BASE, typename T>
+    constexpr INT_64 abs_div_num(const T in[], T num, T out[], size_t len)
     {
         size_t pos = ary_true_len(in, len);
-        num %= base;
+        num %= BASE;
         if (num == 1)
         {
             ary_copy(out, in, len);
@@ -698,14 +698,14 @@ namespace hint_arithm
         while (pos > 0)
         {
             pos--;
-            last_rem = last_rem * base + in[pos];
+            last_rem = last_rem * BASE + in[pos];
             std::tie(out[pos], last_rem) = div_mod<UINT_64>(last_rem, num);
         }
         return last_rem;
     }
     // 除数的规则化
-    template <typename T>
-    constexpr T divisor_normalize(const T in[], T out[], size_t len, const UINT_64 base)
+    template <UINT_64 BASE, typename T>
+    constexpr T divisor_normalize(const T in[], T out[], size_t len)
     {
         if (in == out)
         {
@@ -714,29 +714,29 @@ namespace hint_arithm
         T multiplier = 1;
         if (len == 1)
         {
-            multiplier = (base - 1) / in[0];
+            multiplier = (BASE - 1) / in[0];
             out[0] = in[0] * multiplier;
         }
-        else if (in[len - 1] >= (base / 2))
+        else if (in[len - 1] >= (BASE / 2))
         {
             ary_copy(out, in, len);
         }
         else
         {
-            multiplier = (base - 1) * base / (base * in[len - 1] + in[len - 2]);
-            abs_mul_num<false>(in, multiplier, out, len, base);
-            if (out[len - 1] < (base / 2))
+            multiplier = (BASE - 1) * BASE / (BASE * in[len - 1] + in[len - 2]);
+            abs_mul_num<BASE, false>(in, multiplier, out, len);
+            if (out[len - 1] < (BASE / 2))
             {
                 multiplier++;
-                abs_add<false>(out, in, out, len, len, base);
+                abs_add<BASE, false>(out, in, out, len, len);
             }
         }
         return multiplier;
     }
     // 长除法,从被除数返回余数,需要确保除数的规则化
-    template <typename T>
+    template <UINT_64 BASE, typename T>
     void abs_long_div(T dividend[], const T divisor[], T quot[],
-                      size_t len1, size_t len2, const UINT_64 base)
+                      size_t len1, size_t len2)
     {
         len1 = ary_true_len(dividend, len1);
         len2 = ary_true_len(divisor, len2);
@@ -754,16 +754,16 @@ namespace hint_arithm
         }
         if (len2 == 1)
         {
-            T rem = abs_div_num(dividend, divisor[0], quot, len1, base);
+            T rem = abs_div_num<BASE>(dividend, divisor[0], quot, len1);
             dividend[0] = rem;
             return;
         }
-        if (divisor[len2 - 1] < (base / 2))
+        if (divisor[len2 - 1] < (BASE / 2))
         {
             throw("Can't call this proc before normalize the divisor\n");
         }
         quot[len1 - len2] = 0;
-        const UINT_64 divisor_2digits = base * divisor[len2 - 1] + divisor[len2 - 2];
+        const UINT_64 divisor_2digits = BASE * divisor[len2 - 1] + divisor[len2 - 2];
 
         hintvector<T> sub(len2 + 1);
         sub.change_length(len2 + 1);
@@ -772,54 +772,54 @@ namespace hint_arithm
         while (abs_compare(dividend, divisor, len1, len2) >= 0)
         {
             sub.change_length(len2 + 1);
-            UINT_64 dividend_2digits = dividend[len1 - 1] * base + dividend[len1 - 2];
+            UINT_64 dividend_2digits = dividend[len1 - 1] * BASE + dividend[len1 - 2];
             T quo_digit = 0;
             size_t shift = len1 - len2;
             // 被除数前两位大于等于除数前两位试商的结果偏差不大于1
             if (dividend_2digits >= divisor_2digits)
             {
                 quo_digit = dividend_2digits / divisor_2digits;
-                abs_mul_num(divisor, quo_digit, sub.type_ptr(), len2, base);
+                abs_mul_num<BASE>(divisor, quo_digit, sub.type_ptr(), len2);
                 sub.set_true_len();
                 size_t sub_len = sub.length();
                 if (abs_compare(dividend + shift, sub.type_ptr(), len1 - shift, sub_len) < 0)
                 {
                     quo_digit--;
-                    abs_sub(sub.type_ptr(), divisor, sub.type_ptr(), sub_len, len2, base);
+                    abs_sub<BASE>(sub.type_ptr(), divisor, sub.type_ptr(), sub_len, len2);
                 }
             }
             else
             {
                 // 被除数前两位和除数前一位试商的结果偏差不大于2
-                quo_digit = dividend_2digits / (divisor_2digits / base);
-                if (quo_digit >= base)
+                quo_digit = dividend_2digits / (divisor_2digits / BASE);
+                if (quo_digit >= BASE)
                 {
-                    quo_digit = base - 1;
+                    quo_digit = BASE - 1;
                 }
                 shift--;
-                abs_mul_num(divisor, quo_digit, sub.type_ptr(), len2, base);
+                abs_mul_num<BASE>(divisor, quo_digit, sub.type_ptr(), len2);
                 sub.set_true_len();
                 size_t sub_len = sub.length();
                 if (abs_compare(dividend + shift, sub.type_ptr(), len1 - shift, sub_len) < 0)
                 {
                     quo_digit--;
-                    abs_sub(sub.type_ptr(), divisor, sub.type_ptr(), sub_len, len2, base);
+                    abs_sub<BASE>(sub.type_ptr(), divisor, sub.type_ptr(), sub_len, len2);
                     if (abs_compare(dividend + shift, sub.type_ptr(), len1 - shift, sub_len) < 0)
                     {
                         quo_digit--;
-                        abs_sub(sub.type_ptr(), divisor, sub.type_ptr(), sub_len, len2, base);
+                        abs_sub<BASE>(sub.type_ptr(), divisor, sub.type_ptr(), sub_len, len2);
                     }
                 }
             }
-            abs_sub(dividend + shift, sub.type_ptr(), dividend + shift, len1, sub.length(), base);
+            abs_sub<BASE>(dividend + shift, sub.type_ptr(), dividend + shift, len1, sub.length());
             len1 = ary_true_len(dividend, len1);
             quot[shift] = quo_digit;
         }
     }
     // 递归除法,从被除数返回余数,需要确保除数的规则化
-    template <typename T>
+    template <UINT_64 BASE, typename T>
     void abs_rec_div(T dividend[], T divisor[], hintvector<T> &quot,
-                     size_t len1, size_t len2, const UINT_64 base)
+                     size_t len1, size_t len2)
     {
         len1 = ary_true_len(dividend, len1);
         len2 = ary_true_len(divisor, len2);
@@ -836,7 +836,7 @@ namespace hint_arithm
         {
             return;
         }
-        if (divisor[len2 - 1] < (base / 2))
+        if (divisor[len2 - 1] < (BASE / 2))
         {
             throw("Can't call this proc before normalize the divisor\n");
         }
@@ -845,7 +845,7 @@ namespace hint_arithm
         constexpr size_t LONG_DIV_THRESHOLD = 50;
         if (len2 <= LONG_DIV_THRESHOLD) // 小于等于阈值调用长除法
         {
-            abs_long_div(dividend, divisor, quot.type_ptr(), len1, len2, base);
+            abs_long_div<BASE>(dividend, divisor, quot.type_ptr(), len1, len2);
         }
         else if (len1 >= len2 * 2 || len1 > ((len2 + 1) / 2) * 3) // 2n/n的除法，进行两次递归
         {
@@ -853,47 +853,47 @@ namespace hint_arithm
             size_t quot_tmp_len = base_len * 3 - len2 + 2;
             hintvector<T> quot_tmp(quot_tmp_len, 0);
 
-            abs_rec_div(dividend + base_len, divisor, quot_tmp, len1 - base_len, len2, base);
+            abs_rec_div<BASE>(dividend + base_len, divisor, quot_tmp, len1 - base_len, len2);
             quot_tmp_len = quot_tmp.set_true_len();
             size_t dividend_len = ary_true_len(dividend, len1);
-            abs_rec_div(dividend, divisor, quot, dividend_len, len2, base);
+            abs_rec_div<BASE>(dividend, divisor, quot, dividend_len, len2);
             quot.change_length(quot_len);
             quot_len = quot.set_true_len();
-            abs_add(quot.type_ptr() + base_len, quot_tmp.type_ptr(), quot.type_ptr() + base_len, quot_len - base_len, quot_tmp_len, base);
+            abs_add<BASE>(quot.type_ptr() + base_len, quot_tmp.type_ptr(), quot.type_ptr() + base_len, quot_len - base_len, quot_tmp_len);
             quot.change_length(len1 - len2 + 1);
         }
         else
         {
             // 开始试商,用dividend/(base^base_len)除以divisor/(base^base_len)
             size_t base_len = len2 / 2;
-            abs_rec_div(dividend + base_len, divisor + base_len, quot, len1 - base_len, len2 - base_len, base);
+            abs_rec_div<BASE>(dividend + base_len, divisor + base_len, quot, len1 - base_len, len2 - base_len);
 
             constexpr T ONE[1] = {1};
             quot_len = quot.set_true_len();
             hintvector<T> prod(base_len + quot_len);
             prod.change_length(base_len + quot_len);
             // 用除数的低base_len位乘以刚刚试出来的商,而后与余数比较,必须满足quot*(divisor%(base^base_len))<=dividend
-            abs_mul(divisor, quot.type_ptr(), prod.type_ptr(), base_len, quot_len, base);
+            abs_mul<BASE>(divisor, quot.type_ptr(), prod.type_ptr(), base_len, quot_len);
             size_t prod_len = prod.set_true_len();
             len1 = ary_true_len(dividend, len1);
 
             while (abs_compare(prod.type_ptr(), dividend, prod_len, len1) > 0)
             {
-                abs_sub(quot.type_ptr(), ONE, quot.type_ptr(), quot_len, 1, base);
-                abs_sub(prod.type_ptr(), divisor, prod.type_ptr(), prod_len, base_len, base);
-                abs_add(dividend + base_len, divisor + base_len, dividend + base_len, len1 - base_len, len2 - base_len, base);
+                abs_sub<BASE>(quot.type_ptr(), ONE, quot.type_ptr(), quot_len, 1);
+                abs_sub<BASE>(prod.type_ptr(), divisor, prod.type_ptr(), prod_len, base_len);
+                abs_add<BASE>(dividend + base_len, divisor + base_len, dividend + base_len, len1 - base_len, len2 - base_len);
 
                 quot_len = quot.set_true_len();
                 prod_len = prod.set_true_len();
                 len1 = ary_true_len(dividend, std::max(len1, len2) + 1);
             }
-            abs_sub(dividend, prod.type_ptr(), dividend, len1, prod_len, base);
+            abs_sub<BASE>(dividend, prod.type_ptr(), dividend, len1, prod_len);
         }
     }
     // 绝对值除法
-    template <typename T>
+    template <UINT_64 BASE, typename T>
     hintvector<T> abs_div(const T dividend[], T divisor[], hintvector<T> &quot,
-                          size_t len1, size_t len2, const UINT_64 base, bool ret_rem = true)
+                          size_t len1, size_t len2, bool ret_rem = true)
     {
         hintvector<T> normalized_divisor(len2); // 定义规则化的除数
         normalized_divisor.change_length(len2);
@@ -902,27 +902,56 @@ namespace hint_arithm
 
         T *divisor_ptr = normalized_divisor.type_ptr();
         T *dividend_ptr = normalized_dividend.type_ptr();
-        T multiplier = divisor_normalize(divisor, divisor_ptr, len2, base); // 除数规则化,获得乘数
-        abs_mul_num(dividend, multiplier, dividend_ptr, len1, base);        // 被除数规则化
+        T multiplier = divisor_normalize<BASE>(divisor, divisor_ptr, len2); // 除数规则化,获得乘数
+        abs_mul_num<BASE>(dividend, multiplier, dividend_ptr, len1);        // 被除数规则化
         len1 = normalized_dividend.set_true_len();
         quot = hintvector<T>(len1 - len2 + 2, 0);
         if ((!ret_rem) && (len1 + 2 < len2 * 2))
         {
             // 除数过长时可以截取一部分不参与计算
             size_t shift = len2 * 2 - len1 - 2;
-            abs_rec_div(dividend_ptr + shift, divisor_ptr + shift, quot, len1 - shift, len2 - shift, base);
+            abs_rec_div<BASE>(dividend_ptr + shift, divisor_ptr + shift, quot, len1 - shift, len2 - shift);
             quot.set_true_len();
             return normalized_dividend;
         }
-        abs_rec_div(dividend_ptr, divisor_ptr, quot, len1, len2, base);
+        abs_rec_div<BASE>(dividend_ptr, divisor_ptr, quot, len1, len2);
         quot.set_true_len();
         if (ret_rem)
         {
             len1 = normalized_dividend.set_true_len();
-            abs_div_num(dividend_ptr, multiplier, dividend_ptr, len1, base); // 余数除以乘数得到正确的结果
+            abs_div_num<BASE>(dividend_ptr, multiplier, dividend_ptr, len1); // 余数除以乘数得到正确的结果
             normalized_dividend.set_true_len();
         }
         return normalized_dividend;
+    }
+    // 多项式求逆
+    template <UINT_64 MOD, UINT_64 G_ROOT>
+    void poly_inv(UINT_32 *in, UINT_32 *out, size_t len)
+    {
+        constexpr UINT_64 IG_ROOT = mod_inv(G_ROOT, MOD);
+        // // B≡2B'-AB'^2
+        UINT_32 *in_ntt = new UINT_32[len * 2];
+        out[0] = mod_inv(in[0], MOD);
+        for (size_t rank = 2; rank <= len; rank *= 2)
+        {
+            size_t gap = rank * 2;
+            ary_copy(in_ntt, in, rank);
+            ary_clr(in_ntt + rank, rank);
+            ary_clr(out + rank / 2, gap - rank / 2);
+            hint_transform::ntt_radix2_dif<MOD, G_ROOT>(in_ntt, gap, true);
+            hint_transform::ntt_radix2_dif<MOD, G_ROOT>(out, gap, true);
+            for (size_t i = 0; i < gap; i++)
+            {
+                UINT_64 a = in_ntt[i], b = out[i];
+                out[i] = (b * 2 + MOD - (b * b % MOD) * a % MOD) % MOD;
+            }
+            hint_transform::ntt_radix2_dit<MOD, IG_ROOT>(out, gap, true);
+            UINT_64 inv = mod_inv(gap, MOD);
+            for (size_t i = 0; i < gap / 2; i++)
+            {
+                out[i] = out[i] * inv % MOD;
+            }
+        }
     }
     /// @brief 高精度进制转换
     /// @tparam T
@@ -930,9 +959,8 @@ namespace hint_arithm
     /// @param data_ary 输入表示大整数的数组,需留有充足空间
     /// @param BASE1 输入进制
     /// @param BASE2 输出进制
-    template <typename T>
-    void base_conversion(T data_ary[], size_t &in_len,
-                         const UINT_64 BASE1 = 1 << 16, const UINT_64 BASE2 = 1e4)
+    template <UINT_64 BASE1 = 1 << 16, UINT_64 BASE2 = 10000, typename T>
+    void base_conversion(T data_ary[], size_t &in_len)
     {
         if (in_len == 0 || BASE1 == BASE2)
         {
@@ -1273,7 +1301,7 @@ public:
         auto ptr1 = data.type_ptr();
         auto ptr2 = input.data.type_ptr();
         auto res_ptr = result.data.type_ptr();
-        hint_arithm::abs_add<true>(ptr1, ptr2, res_ptr, len1, len2, BASE);
+        hint_arithm::abs_add<BASE, true>(ptr1, ptr2, res_ptr, len1, len2);
         result.data.set_true_len();
         return result;
     }
@@ -1286,7 +1314,7 @@ public:
         auto ptr1 = data.type_ptr();
         auto ptr2 = input.data.type_ptr();
         auto res_ptr = result.data.type_ptr();
-        hint_arithm::abs_sub(ptr1, ptr2, res_ptr, len1, len2, BASE);
+        hint_arithm::abs_sub<BASE>(ptr1, ptr2, res_ptr, len1, len2);
         result.data.set_true_len();
         return result;
     }
@@ -1394,11 +1422,11 @@ public:
         auto res_ptr = result.data.type_ptr();
         if (abs_compare(input) == 0)
         {
-            hint_arithm::abs_sqr(ptr1, res_ptr, len1, BASE);
+            hint_arithm::abs_sqr<BASE>(ptr1, res_ptr, len1);
         }
         else
         {
-            hint_arithm::abs_mul_balance(ptr1, ptr2, res_ptr, len1, len2, BASE);
+            hint_arithm::abs_mul_balance<BASE>(ptr1, ptr2, res_ptr, len1, len2);
         }
         result.data.set_true_len();
         result.change_sign(is_neg() != input.is_neg());
@@ -1419,7 +1447,7 @@ public:
         auto ptr1 = data.type_ptr();
         auto ptr2 = input.data.type_ptr();
 
-        hint_arithm::abs_div(ptr1, ptr2, result.data, len1, len2, BASE, false);
+        hint_arithm::abs_div<BASE>(ptr1, ptr2, result.data, len1, len2, false);
 
         result.data.set_true_len();
         result.change_sign(is_neg() != input.is_neg());
@@ -1440,7 +1468,7 @@ public:
         auto ptr1 = data.type_ptr();
         auto ptr2 = input.data.type_ptr();
 
-        result.data = hint_arithm::abs_div(ptr1, ptr2, result.data, len1, len2, BASE);
+        result.data = hint_arithm::abs_div<BASE>(ptr1, ptr2, result.data, len1, len2);
 
         result.data.set_true_len();
         result.change_sign(is_neg() != input.is_neg());
