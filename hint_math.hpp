@@ -158,8 +158,20 @@ namespace hint
     {
         return std::make_pair(a / b, a % b);
     }
+    // 无溢出64位与64位乘,返回的pair的first为低位,second为高位
+    constexpr std::pair<UINT_64, UINT_64> safe_mul128(UINT_64 a, UINT_64 b)
+    {
+        UINT_64 al = a & HINT_INT32_0XFF;
+        UINT_64 bl = b & HINT_INT32_0XFF;
+        UINT_64 ah = a >> HINT_INT_BIT;
+        UINT_64 bh = b >> HINT_INT_BIT;
+        UINT_64 resl = al * bl;
+        UINT_64 resm = al * bh + ah * bl + (resl >> HINT_INT_BIT);
+        UINT_64 resh = ah * bh + (resm >> HINT_INT_BIT);
+        return std::make_pair((resm << HINT_INT_BIT) + (HINT_INT32_0XFF & resl), resh);
+    }
     // 无溢出64位与32位乘
-    constexpr std::pair<UINT_32, UINT_64> safe_mul(UINT_64 a, UINT_32 b)
+    constexpr std::pair<UINT_32, UINT_64> safe_mul96(UINT_64 a, UINT_32 b)
     {
         UINT_64 tmp1 = a & HINT_INT32_0XFF;
         UINT_64 tmp2 = a >> HINT_INT_BIT;
@@ -653,12 +665,12 @@ namespace hint
 
             Complex tmp5 = tmp1 - tmp3;
             Complex tmp6 = tmp2 - tmp4;
-            tmp6 = Complex(-tmp6.imag(), tmp6.real());
+            tmp6 = Complex(tmp6.imag(), -tmp6.real());
 
             input[pos] = tmp1 + tmp3;
             input[pos + rank] = tmp2 + tmp4;
-            input[pos + rank * 2] = (tmp5 - tmp6) * omega;
-            input[pos + rank * 3] = (tmp5 + tmp6) * omega_cube;
+            input[pos + rank * 2] = (tmp5 + tmp6) * omega;
+            input[pos + rank * 3] = (tmp5 - tmp6) * omega_cube;
         }
         // 2点fft
         inline void fft_2point(Complex &sum, Complex &diff)
@@ -900,11 +912,6 @@ namespace hint
             {
                 return;
             }
-            if (fft_len == 4)
-            {
-                fft_4point(input, 0, 1);
-                return;
-            }
             UINT_32 shift = log4_len * 2;
             for (size_t rank = fft_len / 4; rank > 1; rank /= 4)
             {
@@ -936,7 +943,7 @@ namespace hint
         void fft_dif_divr4(Complex *input, size_t fft_len, const bool bit_inv = true)
         {
             size_t quad_len = fft_len / 4;
-            size_t log_len = std::log2(fft_len);
+            size_t log_len = hint_log2(fft_len);
             TABLE.expend(log_len);
             for (size_t i = 0; i < quad_len; i++)
             {
@@ -958,7 +965,7 @@ namespace hint
         void fft_dit_divr4(Complex *input, size_t fft_len, const bool bit_inv = true)
         {
             size_t quad_len = fft_len / 4;
-            size_t log_len = std::log2(fft_len);
+            size_t log_len = hint_log2(fft_len);
             TABLE.expend(log_len);
             if (bit_inv)
             {
@@ -980,7 +987,7 @@ namespace hint
         void fft_dif_divr2(Complex *input, size_t fft_len, const bool bit_inv = true)
         {
             size_t half_len = fft_len / 2;
-            size_t log_len = std::log2(fft_len);
+            size_t log_len = hint_log2(fft_len);
             TABLE.expend(log_len);
             for (size_t i = 0; i < half_len; i++)
             {
@@ -1003,7 +1010,7 @@ namespace hint
         void fft_dit_divr2(Complex *input, size_t fft_len, const bool bit_inv = true)
         {
             size_t half_len = fft_len / 2;
-            size_t log_len = std::log2(fft_len);
+            size_t log_len = hint_log2(fft_len);
             TABLE.expend(log_len);
             if (bit_inv)
             {
@@ -1039,6 +1046,15 @@ namespace hint
             }
         }
         template <>
+        void fft_split_radix_dit<0>(Complex *input) {}
+        template <>
+        void fft_split_radix_dit<1>(Complex *input) {}
+        template <>
+        void fft_split_radix_dit<2>(Complex *input)
+        {
+            fft_2point(input[0], input[1]);
+        }
+        template <>
         void fft_split_radix_dit<1 << 5>(Complex *input)
         {
             fft_radix2_dit_lut(input, 1 << 5, false);
@@ -1063,6 +1079,15 @@ namespace hint
             fft_split_radix_dif<half_len>(input);
             fft_split_radix_dif<quarter_len>(input + half_len);
             fft_split_radix_dif<quarter_len>(input + half_len + quarter_len);
+        }
+        template <>
+        void fft_split_radix_dif<0>(Complex *input) {}
+        template <>
+        void fft_split_radix_dif<1>(Complex *input) {}
+        template <>
+        void fft_split_radix_dif<2>(Complex *input)
+        {
+            fft_2point(input[0], input[1]);
         }
         template <>
         void fft_split_radix_dif<1 << 6>(Complex *input)
@@ -1145,9 +1170,6 @@ namespace hint
             size_t log_len = hint_log2(fft_len);
             switch (log_len)
             {
-            case 7:
-                fft_split_radix_dif<1 << 7>(input);
-                break;
             case 8:
                 fft_split_radix_dif<1 << 8>(input);
                 break;
@@ -1362,20 +1384,16 @@ namespace hint
         template <INT_64 MOD>
         constexpr INT_64 mul_mod(INT_64 a, INT_64 b)
         {
-            if (((a | b) >> 32) == 0)
+            int64_t res = a * b - uint64_t(1.L / MOD * a * b) * MOD;
+            if (res < 0)
             {
-                return a * b % MOD;
+                res += MOD;
             }
-            INT_64 result = a * b - static_cast<UINT_64>(1.0 * a / MOD * b) * MOD;
-            if (result < 0)
+            else if (res >= MOD)
             {
-                result += MOD;
+                res -= MOD;
             }
-            else if (result >= MOD)
-            {
-                result -= MOD;
-            }
-            return result;
+            return res;
         }
         // 归一化,逆变换用
         template <UINT_64 MOD>
