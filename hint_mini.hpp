@@ -195,7 +195,7 @@ namespace hint_arithm
     // 高精度加法
     template <INT_64 BASE, bool is_carry = true, typename T>
     constexpr void abs_add(const T in1[], const T in2[], T out[],
-                           size_t len1, size_t len2)
+        size_t len1, size_t len2)
     {
         if (len1 < len2)
         {
@@ -227,7 +227,7 @@ namespace hint_arithm
     // 高精度减法
     template <INT_64 BASE, typename T>
     constexpr void abs_sub(const T in1[], const T in2[], T out[],
-                           size_t len1, size_t len2)
+        size_t len1, size_t len2)
     {
         if (len1 < len2)
         {
@@ -253,7 +253,7 @@ namespace hint_arithm
     }
     // 64位搞精度加法
     constexpr void abs_add64(const UINT_64 in1[], const UINT_64 in2[], UINT_64 out[],
-                             size_t len1, size_t len2)
+        size_t len1, size_t len2)
     {
         if (len1 < len2)
         {
@@ -283,7 +283,7 @@ namespace hint_arithm
     }
     // 64位多精度减法
     constexpr void abs_sub64(const UINT_64 in1[], const UINT_64 in2[], UINT_64 out[],
-                             size_t len1, size_t len2)
+        size_t len1, size_t len2)
     {
         if (len1 < len2)
         {
@@ -314,7 +314,7 @@ namespace hint_arithm
     // 小学乘法
     template <UINT_64 BASE, typename T>
     void normal_mul(const T in1[], const T in2[], T out[],
-                    size_t len1, size_t len2)
+        size_t len1, size_t len2)
     {
         if (len1 < len2)
         {
@@ -325,12 +325,11 @@ namespace hint_arithm
         {
             return;
         }
-        T *res = out;
+        T* res = out;
         if (in1 == out || in2 == out)
         {
-            res = new T[len1 + len2];
+            res = new T[len1 + len2]();
         }
-        ary_clr(res, len1 + len2);
         for (size_t i = 0; i < len1; i++)
         {
             UINT_64 num1 = in1[i];
@@ -353,31 +352,32 @@ namespace hint_arithm
     // fft加速乘法
     template <UINT_64 BASE, typename T>
     void fft_mul(const T in1[], const T in2[], T out[],
-                 size_t len1, size_t len2)
+        size_t len1, size_t len2)
     {
+        using namespace hint_transform;
         if (len1 == 0 || len2 == 0 || in1 == nullptr || in2 == nullptr)
         {
             return;
         }
-        size_t conv_res_len = len1 + len2 - 1;   // 卷积结果长度
-        size_t fft_len = min_2pow(conv_res_len); // fft长度
-        Complex *fft_ary = new Complex[fft_len];
+        const size_t conv_res_len = len1 + len2 - 1;   // 卷积结果长度
+        const size_t fft_len = min_2pow(conv_res_len); // fft长度
+        Complex* fft_ary = new Complex[fft_len];
         com_ary_combine_copy(fft_ary, in1, len1, in2, len2);
-        hint_transform::fft_dif(fft_ary, fft_len, false);
-        double inv = -1 / (2.0 * fft_len);
-        for (size_t i = 0; i < fft_len; i++)
-        {
-            Complex tmp = fft_ary[i];
-            fft_ary[i] = std::conj(tmp * tmp * inv);
-        }
-        hint_transform::fft_dit(fft_ary, fft_len, false);
-        hint::UINT_64 carry = 0;
-        for (size_t i = 0; i < conv_res_len; i++)
-        {
-            carry += static_cast<hint::UINT_64>(fft_ary[i].imag() + 0.5);
-            std::tie(carry, out[i]) = div_mod<UINT_64>(carry, BASE);
-        }
-        out[conv_res_len] = carry % BASE;
+        fft_dif(fft_ary, fft_len,false);
+         double inv = -1 / (2.0 * fft_len);
+         for (size_t i = 0; i < fft_len; i++)
+         {
+             Complex tmp = fft_ary[i];
+             fft_ary[i] = std::conj(tmp * tmp * inv);
+         }
+         fft_dit(fft_ary, fft_len, false);
+         hint::UINT_64 carry = 0;
+         for (size_t i = 0; i < conv_res_len; i++)
+         {
+             carry += static_cast<hint::UINT_64>(fft_ary[i].imag() + 0.5);
+             std::tie(carry, out[i]) = div_mod<UINT_64>(carry, BASE);
+         }
+         out[conv_res_len] = carry % BASE;
         delete[] fft_ary;
     }
     // fht加速乘法
@@ -390,8 +390,7 @@ namespace hint_arithm
         }
         size_t conv_res_len = len * 2 - 1;       // 卷积结果长度
         size_t fht_len = min_2pow(conv_res_len); // fht长度
-        double *fht_ary = new double[fht_len * 2];
-        ary_clr(fht_ary, fht_len);
+        double* fht_ary = new double[fht_len * 2]();
         ary_copy_2type(fht_ary, in, len);
         fht_convolution(fht_ary, fht_ary, fht_ary + fht_len, fht_len);
         hint::UINT_64 carry = 0;
@@ -406,7 +405,7 @@ namespace hint_arithm
     // ntt加速乘法
     template <UINT_64 BASE, typename T>
     void ntt_mul(const T in1[], const T in2[], T out[],
-                 size_t len1, size_t len2)
+        size_t len1, size_t len2)
     {
         if (len1 == 0 || len2 == 0 || in1 == nullptr || in2 == nullptr)
         {
@@ -414,11 +413,10 @@ namespace hint_arithm
         }
         size_t conv_res_len = len1 + len2 - 1;   // 卷积结果长度
         size_t ntt_len = min_2pow(conv_res_len); // ntt长度
-        UINT_32 *ntt_ary1 = new UINT_32[ntt_len * 4];
-        ary_clr(ntt_ary1, ntt_len * 4);
-        UINT_32 *ntt_ary2 = ntt_ary1 + ntt_len;
-        UINT_32 *ntt_ary3 = ntt_ary1 + ntt_len * 2;
-        UINT_32 *ntt_ary4 = ntt_ary1 + ntt_len * 3;
+        UINT_32* ntt_ary1 = new UINT_32[ntt_len * 4]();
+        UINT_32* ntt_ary2 = ntt_ary1 + ntt_len;
+        UINT_32* ntt_ary3 = ntt_ary1 + ntt_len * 2;
+        UINT_32* ntt_ary4 = ntt_ary1 + ntt_len * 3;
         hint::ary_copy_2type(ntt_ary1, in1, len1);
         hint::ary_copy_2type(ntt_ary2, in1, len1);
         hint::ary_copy_2type(ntt_ary3, in2, len2);
@@ -455,9 +453,8 @@ namespace hint_arithm
         }
         size_t conv_res_len = len * 2 - 1;       // 卷积结果长度
         size_t ntt_len = min_2pow(conv_res_len); // ntt长度
-        UINT_32 *ntt_ary1 = new UINT_32[ntt_len * 2];
-        ary_clr(ntt_ary1, ntt_len * 2);
-        UINT_32 *ntt_ary2 = ntt_ary1 + ntt_len;
+        UINT_32* ntt_ary1 = new UINT_32[ntt_len * 2]();
+        UINT_32* ntt_ary2 = ntt_ary1 + ntt_len;
         hint::ary_copy_2type(ntt_ary1, in, len);
         hint::ary_copy(ntt_ary2, ntt_ary1, len);
 
@@ -485,7 +482,7 @@ namespace hint_arithm
     // karatsuba乘法
     template <INT_64 BASE, typename NTT_Ty = UINT_16, typename T>
     constexpr void karatsuba_mul(const T in1[], const T in2[], T out[],
-                                 size_t len1, size_t len2)
+        size_t len1, size_t len2)
     {
         // (a*base^n+b)*(c*base^n+d) = a*c*base^2n+(a*d+b*c)*base^n+b*d
         // compute: a*c,b*d,(a+b)*(c+d),a*b+b*c = (a+b)*(c+d)-a*c-b*d
@@ -523,15 +520,15 @@ namespace hint_arithm
         size_t len_bd = len_b + len_d;                 // b*d的长度
         size_t len_add_mul = len_b + len_d + 2;        //(a+b)*(c*d)的长度
 
-        const T *a_ptr = in1 + len_b; // in1代表b
-        const T *c_ptr = in2 + len_d; // in2代表d
+        const T* a_ptr = in1 + len_b; // in1代表b
+        const T* c_ptr = in2 + len_d; // in2代表d
 
         hintvector<T> mul_ac(len_ac, 0);       // 存储a*c
         hintvector<T> mul_bd(len_bd, 0);       // 存储b*d
         hintvector<T> add_mul(len_add_mul, 0); // 存储a+b与c+d,a+b的长度为len_b+1
 
-        T *add_ab = add_mul.type_ptr();
-        T *add_cd = add_ab + len_b + 1;
+        T* add_ab = add_mul.type_ptr();
+        T* add_cd = add_ab + len_b + 1;
 
         abs_add<BASE>(in1, a_ptr, add_ab, len_b, len_a); // b+a
         abs_add<BASE>(in2, c_ptr, add_cd, len_d, len_c); // d+c
@@ -577,7 +574,7 @@ namespace hint_arithm
     // 高精度乘法
     template <UINT_64 BASE, typename T>
     constexpr void abs_mul(const T in1[], const T in2[], T out[],
-                           size_t len1, size_t len2)
+        size_t len1, size_t len2)
     {
         len1 = ary_true_len(in1, len1);
         len2 = ary_true_len(in2, len2);
@@ -609,7 +606,7 @@ namespace hint_arithm
         }
         else if (len * 2 - 1 <= (1 << hint_transform::lut_max_rank))
         {
-            fht_sqr<BASE>(in, out, len);
+            fft_mul<BASE>(in, in, out, len, len);
         }
         else if (len * 2 - 1 <= NTT_MAX_LEN)
         {
@@ -623,7 +620,7 @@ namespace hint_arithm
     // 高精度非平衡乘法
     template <UINT_64 BASE, typename T>
     constexpr void abs_mul_balance(const T in1[], const T in2[], T out[],
-                                   size_t len1, size_t len2)
+        size_t len1, size_t len2)
     {
         if (len1 + len2 <= 48 || len1 * len2 < (len1 + len2) * std::log2(len1 + len2))
         {
@@ -736,7 +733,7 @@ namespace hint_arithm
     // 长除法,从被除数返回余数,需要确保除数的规则化
     template <UINT_64 BASE, typename T>
     void abs_long_div(T dividend[], const T divisor[], T quot[],
-                      size_t len1, size_t len2)
+        size_t len1, size_t len2)
     {
         len1 = ary_true_len(dividend, len1);
         len2 = ary_true_len(divisor, len2);
@@ -818,8 +815,8 @@ namespace hint_arithm
     }
     // 递归除法,从被除数返回余数,需要确保除数的规则化
     template <UINT_64 BASE, typename T>
-    void abs_rec_div(T dividend[], T divisor[], hintvector<T> &quot,
-                     size_t len1, size_t len2)
+    void abs_rec_div(T dividend[], T divisor[], hintvector<T>& quot,
+        size_t len1, size_t len2)
     {
         len1 = ary_true_len(dividend, len1);
         len2 = ary_true_len(divisor, len2);
@@ -868,7 +865,7 @@ namespace hint_arithm
             size_t base_len = len2 / 2;
             abs_rec_div<BASE>(dividend + base_len, divisor + base_len, quot, len1 - base_len, len2 - base_len);
 
-            constexpr T ONE[1] = {1};
+            constexpr T ONE[1] = { 1 };
             quot_len = quot.set_true_len();
             hintvector<T> prod(base_len + quot_len);
             prod.change_length(base_len + quot_len);
@@ -892,16 +889,16 @@ namespace hint_arithm
     }
     // 绝对值除法
     template <UINT_64 BASE, typename T>
-    hintvector<T> abs_div(const T dividend[], T divisor[], hintvector<T> &quot,
-                          size_t len1, size_t len2, bool ret_rem = true)
+    hintvector<T> abs_div(const T dividend[], T divisor[], hintvector<T>& quot,
+        size_t len1, size_t len2, bool ret_rem = true)
     {
         hintvector<T> normalized_divisor(len2); // 定义规则化的除数
         normalized_divisor.change_length(len2);
         hintvector<T> normalized_dividend(len1 + 1); // 定义规则化的被除数
         normalized_dividend.change_length(len1 + 1);
 
-        T *divisor_ptr = normalized_divisor.type_ptr();
-        T *dividend_ptr = normalized_dividend.type_ptr();
+        T* divisor_ptr = normalized_divisor.type_ptr();
+        T* dividend_ptr = normalized_dividend.type_ptr();
         T multiplier = divisor_normalize<BASE>(divisor, divisor_ptr, len2); // 除数规则化,获得乘数
         abs_mul_num<BASE>(dividend, multiplier, dividend_ptr, len1);        // 被除数规则化
         len1 = normalized_dividend.set_true_len();
@@ -926,11 +923,11 @@ namespace hint_arithm
     }
     // 多项式求逆
     template <UINT_64 MOD, UINT_64 G_ROOT>
-    void poly_inv(UINT_32 *in, UINT_32 *out, size_t len)
+    void poly_inv(UINT_32* in, UINT_32* out, size_t len)
     {
         constexpr UINT_64 IG_ROOT = mod_inv(G_ROOT, MOD);
         // // B≡2B'-AB'^2
-        UINT_32 *in_ntt = new UINT_32[len * 2];
+        UINT_32* in_ntt = new UINT_32[len * 2];
         out[0] = mod_inv(in[0], MOD);
         for (size_t rank = 2; rank <= len; rank *= 2)
         {
@@ -960,7 +957,7 @@ namespace hint_arithm
     /// @param BASE1 输入进制
     /// @param BASE2 输出进制
     template <UINT_64 BASE1 = 1 << 16, UINT_64 BASE2 = 10000, typename T>
-    void base_conversion(T data_ary[], size_t &in_len)
+    void base_conversion(T data_ary[], size_t& in_len)
     {
         if (in_len == 0 || BASE1 == BASE2)
         {
@@ -1008,21 +1005,20 @@ namespace hint_arithm
             }
         }
         size_t unit_ary_len = max_rank * base1to2_len; // unit_ary的长度max_rank
-        T *unit_ary = new T[unit_ary_len];             // 用一个数组存储base2进制下的(base1)^1,(base1)^2,(base1)^4...
-        ary_clr(unit_ary, unit_ary_len);
+        T* unit_ary = new T[unit_ary_len]();             // 用一个数组存储base2进制下的(base1)^1,(base1)^2,(base1)^4...
         UINT_64 tmp = BASE1;
         size_t i = 0;
         while (tmp > 0)
         {
             std::tie(tmp, unit_ary[i]) = div_mod(tmp, BASE2); // 将base2进制下的base1存入数组
         }
-        T *tmp_product = new T[max_rank * base1to2_len * 2];
+        T* tmp_product = new T[max_rank * base1to2_len * 2];
         for (size_t rank = 1; rank <= max_rank; rank *= 2)
         {
             size_t gap = rank * 2;
             for (size_t i = 0; i < result_len; i += gap)
             {
-                T *work_ary = data_ary + i;
+                T* work_ary = data_ary + i;
                 abs_mul(work_ary + rank, unit_ary, tmp_product, rank, rank, BASE2);
                 abs_add<false>(work_ary, tmp_product, work_ary, rank, gap, BASE2);
             }
@@ -1038,6 +1034,7 @@ namespace hint_arithm
     }
 }
 
+using namespace hint;
 // 简单高精度简单实现
 class Integer
 {
@@ -1057,7 +1054,7 @@ public:
         data = DataVec();
     }
     // Integer 拷贝构造
-    Integer(const Integer &input)
+    Integer(const Integer& input)
     {
         if (this != &input)
         {
@@ -1065,7 +1062,7 @@ public:
         }
     }
     // Integer 移动构造
-    Integer(Integer &&input) noexcept
+    Integer(Integer&& input) noexcept
     {
         if (this != &input)
         {
@@ -1073,7 +1070,7 @@ public:
         }
     }
     // string 参数构造
-    Integer(const std::string &input)
+    Integer(const std::string& input)
     {
         string_in(input);
     }
@@ -1106,7 +1103,7 @@ public:
         data.set_true_len();
     }
     // Integer 拷贝赋值
-    Integer &operator=(const Integer &input)
+    Integer& operator=(const Integer& input)
     {
         if (this != &input)
         {
@@ -1115,7 +1112,7 @@ public:
         return *this;
     }
     // Integer 移动赋值
-    Integer &operator=(Integer &&input) noexcept
+    Integer& operator=(Integer&& input) noexcept
     {
         if (this != &input)
         {
@@ -1124,26 +1121,26 @@ public:
         return *this;
     }
     // string 赋值
-    Integer &operator=(const std::string &input)
+    Integer& operator=(const std::string& input)
     {
         string_in(input);
         return *this;
     }
     // 字符串赋值
-    Integer &operator=(const char input[])
+    Integer& operator=(const char input[])
     {
         string_in(input);
         return *this;
     }
     // 字符串赋值
-    Integer &operator=(char input[])
+    Integer& operator=(char input[])
     {
         string_in(input);
         return *this;
     }
     // 通用赋值
     template <typename T>
-    Integer &operator=(T input)
+    Integer& operator=(T input)
     {
         bool is_neg = hint::is_neg(input);
         hint::UINT_64 tmp = std::abs<hint::INT_64>(input);
@@ -1200,7 +1197,7 @@ public:
         }
         return (len - 1) * DIGIT + std::ceil(std::log10(first_num() + 1));
     }
-    void string_in(const std::string &str)
+    void string_in(const std::string& str)
     {
         size_t str_len = str.size();
         if (str_len == 0)
@@ -1276,23 +1273,23 @@ public:
         }
         putchar('\n');
     }
-    friend std::istream &operator>>(std::istream &is, Integer &num)
+    friend std::istream& operator>>(std::istream& is, Integer& num)
     {
         std::string tmp;
         is >> tmp;
         num.string_in(tmp);
         return is;
     }
-    friend std::ostream &operator<<(std::ostream &os, const Integer &num)
+    friend std::ostream& operator<<(std::ostream& os, const Integer& num)
     {
         return os << num.to_string();
     }
-    hint::INT_32 abs_compare(const Integer &input) const
+    hint::INT_32 abs_compare(const Integer& input) const
     {
         size_t len1 = length(), len2 = input.length();
         return hint_arithm::abs_compare(data.type_ptr(), input.data.type_ptr(), len1, len2);
     }
-    Integer abs_add(const Integer &input) const
+    Integer abs_add(const Integer& input) const
     {
         size_t len1 = length(), len2 = input.length();
         Integer result;
@@ -1305,7 +1302,7 @@ public:
         result.data.set_true_len();
         return result;
     }
-    Integer abs_sub(const Integer &input) const
+    Integer abs_sub(const Integer& input) const
     {
         size_t len1 = length(), len2 = input.length();
         Integer result;
@@ -1318,7 +1315,7 @@ public:
         result.data.set_true_len();
         return result;
     }
-    bool operator>(const Integer &input) const
+    bool operator>(const Integer& input) const
     {
         if (is_neg() != input.is_neg())
         {
@@ -1326,7 +1323,7 @@ public:
         }
         return is_neg() != (abs_compare(input) > 0);
     }
-    bool operator<(const Integer &input) const
+    bool operator<(const Integer& input) const
     {
         if (is_neg() != input.is_neg())
         {
@@ -1334,15 +1331,15 @@ public:
         }
         return is_neg() != (abs_compare(input) < 0);
     }
-    bool operator>=(const Integer &input) const
+    bool operator>=(const Integer& input) const
     {
         return !(*this < input);
     }
-    bool operator<=(const Integer &input) const
+    bool operator<=(const Integer& input) const
     {
         return !(*this > input);
     }
-    bool operator==(const Integer &input) const
+    bool operator==(const Integer& input) const
     {
         if (is_neg() != input.is_neg())
         {
@@ -1350,11 +1347,11 @@ public:
         }
         return abs_compare(input) == 0;
     }
-    bool operator!=(const Integer &input) const
+    bool operator!=(const Integer& input) const
     {
         return !(*this == input);
     }
-    Integer operator+(const Integer &input) const
+    Integer operator+(const Integer& input) const
     {
         Integer result;
         if (is_neg() == input.is_neg()) // 是否同号
@@ -1378,7 +1375,7 @@ public:
         }
         return result;
     }
-    Integer operator-(const Integer &input) const
+    Integer operator-(const Integer& input) const
     {
         Integer result;
         if (this == &input)
@@ -1406,7 +1403,7 @@ public:
         }
         return result;
     }
-    Integer operator*(const Integer &input) const
+    Integer operator*(const Integer& input) const
     {
         Integer result;
         size_t len1 = length(), len2 = input.length();
@@ -1426,13 +1423,14 @@ public:
         }
         else
         {
+            //hint_arithm::fft_mul<BASE>(ptr1, ptr2, res_ptr, len1, len2);
             hint_arithm::abs_mul_balance<BASE>(ptr1, ptr2, res_ptr, len1, len2);
         }
         result.data.set_true_len();
         result.change_sign(is_neg() != input.is_neg());
         return result;
     }
-    Integer operator/(const Integer &input) const
+    Integer operator/(const Integer& input) const
     {
         Integer result;
         size_t len1 = length(), len2 = input.length();
@@ -1453,7 +1451,7 @@ public:
         result.change_sign(is_neg() != input.is_neg());
         return result;
     }
-    Integer operator%(const Integer &input) const
+    Integer operator%(const Integer& input) const
     {
         Integer result;
         size_t len1 = length(), len2 = input.length();
@@ -1489,7 +1487,7 @@ public:
         }
         return result;
     }
-    Integer power(uint64_t n, const Integer &mod) const
+    Integer power(uint64_t n, const Integer& mod) const
     {
         Integer result = 1;
         Integer tmp = *this;
@@ -1522,7 +1520,7 @@ Integer pi_generator(hint::UINT_32 n)
     return result;
 }
 template <typename T>
-bool div_test(const T &dividend, const T &divisor)
+bool div_test(const T& dividend, const T& divisor)
 {
     T quo = dividend / divisor;
     T rem = dividend % divisor;
