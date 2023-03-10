@@ -1199,13 +1199,13 @@ public:
     }
     void string_in(const std::string& str)
     {
-        size_t str_len = str.size();
-        if (str_len == 0)
+        hint::INT_64 len = str.size();
+        if (len == 0)
         {
             data = DataVec();
             return;
         }
-        hint::INT_64 len = str_len, pos = len, i = 0;
+        hint::INT_64 pos = len, i = 0;
         bool is_neg = false;
         if (str[0] == '-')
         {

@@ -4,10 +4,11 @@ class StopWatch
 {
 private:
 	bool is_stop = false, is_start = false;
-	long long tick = 0;
+	uint64_t tick = 0;
 	double rate = 1.0f;
 	std::chrono::system_clock::time_point begin;
 	std::chrono::system_clock::time_point end;
+
 public:
 	StopWatch()
 	{
@@ -36,7 +37,7 @@ public:
 		{
 			is_stop = true;
 			end = std::chrono::system_clock::now();
-			auto delta_time = std::chrono::duration_cast<std::chrono::microseconds>(end - begin);
+			auto delta_time = std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin);
 			tick = delta_time.count();
 		}
 	}
@@ -53,6 +54,7 @@ public:
 			stop();
 			is_stop = false;
 		}
-		return (double)tick / rate;
+		return static_cast<double>(tick / (rate * 1000));
 	}
 };
+StopWatch watch_default(1);
