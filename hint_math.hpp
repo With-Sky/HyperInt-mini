@@ -270,7 +270,7 @@ namespace hint
     }
     // 模板数组拷贝
     template <typename T>
-    void ary_copy(T *target, const T *source, size_t len)
+    void ary_copy(T* target, const T* source, size_t len)
     {
         if (len == 0 || target == source)
         {
@@ -284,7 +284,7 @@ namespace hint
     }
     // 模板数组拷贝
     template <typename T1, typename T2>
-    void ary_copy_2type(T1 *target, const T2 *source, size_t len)
+    void ary_copy_2type(T1* target, const T2* source, size_t len)
     {
         for (size_t i = 0; i < len; i++)
         {
@@ -293,7 +293,7 @@ namespace hint
     }
     // 去除数组前导零后的长度
     template <typename T>
-    constexpr size_t ary_true_len(const T &ary, size_t len)
+    constexpr size_t ary_true_len(const T& ary, size_t len)
     {
         while (len > 0 && ary[len - 1] == 0)
         {
@@ -303,17 +303,17 @@ namespace hint
     }
     // 模版数组清零
     template <typename T>
-    inline void ary_clr(T *ptr, size_t len)
+    inline void ary_clr(T* ptr, size_t len)
     {
         memset(ptr, 0, len * sizeof(T));
     }
     // 重分配空间
     template <typename T>
-    inline T *ary_realloc(T *ptr, size_t len)
+    inline T* ary_realloc(T* ptr, size_t len)
     {
         if (len * sizeof(T) < INT64_MAX)
         {
-            ptr = static_cast<T *>(realloc(ptr, len * sizeof(T)));
+            ptr = static_cast<T*>(realloc(ptr, len * sizeof(T)));
         }
         if (ptr == nullptr)
         {
@@ -323,7 +323,7 @@ namespace hint
     }
     // 从其他类型数组拷贝到复数组实部
     template <typename T>
-    inline void com_ary_real_copy(Complex *target, const T &source, size_t len)
+    inline void com_ary_real_copy(Complex* target, const T& source, size_t len)
     {
         for (size_t i = 0; i < len; i++)
         {
@@ -332,7 +332,7 @@ namespace hint
     }
     // 从其他类型数组拷贝到复数组虚部
     template <typename T>
-    inline void com_ary_img_copy(Complex *target, const T &source, size_t len)
+    inline void com_ary_img_copy(Complex* target, const T& source, size_t len)
     {
         for (size_t i = 0; i < len; i++)
         {
@@ -341,7 +341,7 @@ namespace hint
     }
     // 从其他类型数组拷贝到复数组
     template <typename T>
-    inline void com_ary_combine_copy(Complex *target, const T &source1, size_t len1, const T &source2, size_t len2)
+    inline void com_ary_combine_copy(Complex* target, const T& source1, size_t len1, const T& source2, size_t len2)
     {
         size_t min_len = std::min(len1, len2);
         size_t i = 0;
@@ -366,7 +366,7 @@ namespace hint
     void ary_interlace(T ary[], size_t len)
     {
         size_t sub_len = len / N;
-        T *tmp_ary = new T[len - sub_len];
+        T* tmp_ary = new T[len - sub_len];
         for (size_t i = 0; i < len; i += N)
         {
             ary[i / N] = ary[i];
@@ -409,8 +409,8 @@ namespace hint
 
             static constexpr double PI = HINT_PI;
 
-            ComplexTable(const ComplexTable &) = delete;
-            ComplexTable &operator=(const ComplexTable &) = delete;
+            ComplexTable(const ComplexTable&) = delete;
+            ComplexTable& operator=(const ComplexTable&) = delete;
 
         public:
             ~ComplexTable() {}
@@ -460,7 +460,7 @@ namespace hint
                 size_t zone = quad_n >> shift; // 第几象限
                 if ((quad_n & rank_ff) == 0)
                 {
-                    static constexpr Complex ONES[4] = {Complex(1, 0), Complex(0, 1), Complex(-1, 0), Complex(0, -1)};
+                    static constexpr Complex ONES[4] = { Complex(1, 0), Complex(0, 1), Complex(-1, 0), Complex(0, -1) };
                     return ONES[zone];
                 }
                 Complex tmp;
@@ -499,7 +499,7 @@ namespace hint
                 size_t zone = quad_n >> shift; // 第几象限
                 if ((quad_n & rank_ff) == 0)
                 {
-                    static constexpr Complex ONES_CONJ[4] = {Complex(1, 0), Complex(0, -1), Complex(-1, 0), Complex(0, 1)};
+                    static constexpr Complex ONES_CONJ[4] = { Complex(1, 0), Complex(0, -1), Complex(-1, 0), Complex(0, 1) };
                     return ONES_CONJ[zone];
                 }
                 Complex tmp;
@@ -541,8 +541,8 @@ namespace hint
             static constexpr size_t FAC = 3;
             static constexpr double PI = HINT_PI;
 
-            ComplexTableX(const ComplexTableX &) = delete;
-            ComplexTableX &operator=(const ComplexTableX &) = delete;
+            ComplexTableX(const ComplexTableX&) = delete;
+            ComplexTableX& operator=(const ComplexTableX&) = delete;
 
         public:
             ~ComplexTableX() {}
@@ -552,7 +552,7 @@ namespace hint
                 max_shift = std::max<size_t>(max_shift, 1);
                 max_log_size = max_shift;
                 table.resize(max_shift + 1);
-                table[0] = table[1] = std::vector<Complex>({1});
+                table[0] = table[1] = std::vector<Complex>({ 1 });
                 expend(max_shift);
             }
             void expend(INT_32 shift)
@@ -606,8 +606,8 @@ namespace hint
 
             static constexpr double PI = HINT_PI;
             static constexpr size_t FAC = 3;
-            ComplexTableZ(const ComplexTableZ &) = delete;
-            ComplexTableZ &operator=(const ComplexTableZ &) = delete;
+            ComplexTableZ(const ComplexTableZ&) = delete;
+            ComplexTableZ& operator=(const ComplexTableZ&) = delete;
 
         public:
             ~ComplexTableZ() {}
@@ -673,7 +673,7 @@ namespace hint
 #endif
         // 二进制逆序
         template <typename T>
-        void binary_inverse_swap(T &ary, size_t len)
+        void binary_inverse_swap(T& ary, size_t len)
         {
             size_t i = 0;
             for (size_t j = 1; j < len - 1; j++)
@@ -693,10 +693,10 @@ namespace hint
         }
         // 四进制逆序
         template <typename SizeType = UINT_32, typename T>
-        void quaternary_inverse_swap(T &ary, size_t len)
+        void quaternary_inverse_swap(T& ary, size_t len)
         {
             SizeType log_n = hint_log2(len);
-            SizeType *rev = new SizeType[len / 4];
+            SizeType* rev = new SizeType[len / 4];
             rev[0] = 0;
             for (SizeType i = 1; i < len; i++)
             {
@@ -713,7 +713,7 @@ namespace hint
             delete[] rev;
         }
         // 2点fft
-        inline void fft_2point(Complex &sum, Complex &diff)
+        inline void fft_2point(Complex& sum, Complex& diff)
         {
             Complex tmp0 = sum;
             Complex tmp1 = diff;
@@ -721,44 +721,39 @@ namespace hint
             diff = tmp0 - tmp1;
         }
         // 4点fft
-        inline void fft_4point(Complex *input, size_t rank)
+        inline void fft_4point(Complex* input, size_t rank = 1)
         {
             Complex tmp0 = input[0];
             Complex tmp1 = input[rank];
             Complex tmp2 = input[rank * 2];
             Complex tmp3 = input[rank * 3];
 
-            Complex t0 = tmp0 + tmp2;
-            Complex t1 = tmp1 + tmp3;
-            Complex t2 = tmp0 - tmp2;
-            Complex t3 = tmp1 - tmp3;
-            t3 = Complex(t3.imag(), -t3.real());
+            fft_2point(tmp0, tmp2);
+            fft_2point(tmp1, tmp3);
+            tmp3 = Complex(tmp3.imag(), -tmp3.real());
 
-            input[0] = t0 + t1;
-            input[rank] = t2 + t3;
-            input[rank * 2] = t0 - t1;
-            input[rank * 3] = t2 - t3;
+            input[0] = tmp0 + tmp1;
+            input[rank] = tmp2 + tmp3;
+            input[rank * 2] = tmp0 - tmp1;
+            input[rank * 3] = tmp2 - tmp3;
         }
-
-        inline void fft_dit_4point(Complex *input, size_t rank)
+        inline void fft_dit_4point(Complex* input, size_t rank = 1)
         {
             Complex tmp0 = input[0];
             Complex tmp1 = input[rank];
             Complex tmp2 = input[rank * 2];
             Complex tmp3 = input[rank * 3];
 
-            Complex t0 = tmp0 + tmp1;
-            Complex t1 = tmp0 - tmp1;
-            Complex t2 = tmp2 + tmp3;
-            Complex t3 = tmp2 - tmp3;
-            t3 = Complex(t3.imag(), -t3.real());
+            fft_2point(tmp0, tmp1);
+            fft_2point(tmp2, tmp3);
+            tmp3 = Complex(tmp3.imag(), -tmp3.real());
 
-            input[0] = t0 + t2;
-            input[rank] = t1 + t3;
-            input[rank * 2] = t0 - t2;
-            input[rank * 3] = t1 - t3;
+            input[0] = tmp0 + tmp2;
+            input[rank] = tmp1 + tmp3;
+            input[rank * 2] = tmp0 - tmp2;
+            input[rank * 3] = tmp1 - tmp3;
         }
-        inline void fft_dit_8point(Complex *input, size_t rank)
+        inline void fft_dit_8point(Complex* input, size_t rank = 1)
         {
             Complex tmp0 = input[0];
             Complex tmp1 = input[rank];
@@ -768,26 +763,17 @@ namespace hint
             Complex tmp5 = input[rank * 5];
             Complex tmp6 = input[rank * 6];
             Complex tmp7 = input[rank * 7];
+            fft_2point(tmp0, tmp1);
+            fft_2point(tmp2, tmp3);
+            fft_2point(tmp4, tmp5);
+            fft_2point(tmp6, tmp7);
+            tmp3 = Complex(tmp3.imag(), -tmp3.real());
+            tmp7 = Complex(tmp7.imag(), -tmp7.real());
 
-            Complex t0 = tmp0 + tmp1;
-            Complex t1 = tmp0 - tmp1;
-            Complex t2 = tmp2 + tmp3;
-            Complex t3 = tmp2 - tmp3;
-            Complex t4 = tmp4 + tmp5;
-            Complex t5 = tmp4 - tmp5;
-            Complex t6 = tmp6 + tmp7;
-            Complex t7 = tmp6 - tmp7;
-            t3 = Complex(t3.imag(), -t3.real());
-            t7 = Complex(t7.imag(), -t7.real());
-
-            tmp0 = t0 + t2;
-            tmp1 = t1 + t3;
-            tmp2 = t0 - t2;
-            tmp3 = t1 - t3;
-            tmp4 = t4 + t6;
-            tmp5 = t5 + t7;
-            tmp6 = t4 - t6;
-            tmp7 = t5 - t7;
+            fft_2point(tmp0, tmp2);
+            fft_2point(tmp1, tmp3);
+            fft_2point(tmp4, tmp6);
+            fft_2point(tmp5, tmp7);
             static constexpr double cos_1_8 = 0.70710678118654752440084436210485;
             tmp5 = cos_1_8 * Complex(tmp5.imag() + tmp5.real(), tmp5.imag() - tmp5.real());
             tmp6 = Complex(tmp6.imag(), -tmp6.real());
@@ -802,164 +788,166 @@ namespace hint
             input[rank * 6] = tmp2 - tmp6;
             input[rank * 7] = tmp3 - tmp7;
         }
-        inline void fft_dit_16point(Complex *input, size_t rank)
+        inline void fft_dit_16point(Complex* input, size_t rank = 1)
         {
-            Complex tmp0 = input[0];
-            Complex tmp1 = input[rank];
-            Complex tmp2 = input[rank * 2];
-            Complex tmp3 = input[rank * 3];
-            Complex tmp4 = input[rank * 4];
-            Complex tmp5 = input[rank * 5];
-            Complex tmp6 = input[rank * 6];
-            Complex tmp7 = input[rank * 7];
-            Complex tmp8 = input[rank * 8];
-            Complex tmp9 = input[rank * 9];
-            Complex tmp10 = input[rank * 10];
-            Complex tmp11 = input[rank * 11];
-            Complex tmp12 = input[rank * 12];
-            Complex tmp13 = input[rank * 13];
-            Complex tmp14 = input[rank * 14];
-            Complex tmp15 = input[rank * 15];
-
-            Complex t0 = tmp0 + tmp1;
-            Complex t1 = tmp0 - tmp1;
-            Complex t2 = tmp2 + tmp3; //*W(0,4)
-            Complex t3 = tmp2 - tmp3; //*W(1,4)
-            Complex t4 = tmp4 + tmp5;
-            Complex t5 = tmp4 - tmp5;
-            Complex t6 = tmp6 + tmp7; //*W(0,4)
-            Complex t7 = tmp6 - tmp7; //*W(1,4)
-            Complex t8 = tmp8 + tmp9;
-            Complex t9 = tmp8 - tmp9;
-            Complex t10 = tmp10 + tmp11; //*W(0,4)
-            Complex t11 = tmp10 - tmp11; //*W(1,4)
-            Complex t12 = tmp12 + tmp13;
-            Complex t13 = tmp12 - tmp13;
-            Complex t14 = tmp14 + tmp15; //*W(0,4)
-            Complex t15 = tmp14 - tmp15; //*W(1,4)
-            t3 = Complex(t3.imag(), -t3.real());
-            t7 = Complex(t7.imag(), -t7.real());
-            t11 = Complex(t11.imag(), -t11.real());
-            t15 = Complex(t15.imag(), -t15.real());
-
-            tmp0 = t0 + t2;
-            tmp1 = t1 + t3;
-            tmp2 = t0 - t2;
-            tmp3 = t1 - t3;
-            tmp4 = t4 + t6; //*W(0,8)
-            tmp5 = t5 + t7; //*W(1,8)
-            tmp6 = t4 - t6; //*W(2,8)
-            tmp7 = t5 - t7; //*W(3,8)
-            tmp8 = t8 + t10;
-            tmp9 = t9 + t11;
-            tmp10 = t8 - t10;
-            tmp11 = t9 - t11;
-            tmp12 = t12 + t14; //*W(0,8)
-            tmp13 = t13 + t15; //*W(1,8)
-            tmp14 = t12 - t14; //*W(2,8)
-            tmp15 = t13 - t15; //*W(3,8)
             static constexpr double cos_1_8 = 0.70710678118654752440084436210485;
-            tmp5 = cos_1_8 * Complex(tmp5.imag() + tmp5.real(), tmp5.imag() - tmp5.real());
-            tmp6 = Complex(tmp6.imag(), -tmp6.real());
-            tmp7 = -cos_1_8 * Complex(tmp7.real() - tmp7.imag(), tmp7.real() + tmp7.imag());
-            tmp13 = cos_1_8 * Complex(tmp13.imag() + tmp13.real(), tmp13.imag() - tmp13.real());
-            tmp14 = Complex(tmp14.imag(), -tmp14.real());
-            tmp15 = -cos_1_8 * Complex(tmp15.real() - tmp15.imag(), tmp15.real() + tmp15.imag());
-
-            t0 = tmp0 + tmp4;
-            t1 = tmp1 + tmp5;
-            t2 = tmp2 + tmp6;
-            t3 = tmp3 + tmp7;
-            t4 = tmp0 - tmp4;
-            t5 = tmp1 - tmp5;
-            t6 = tmp2 - tmp6;
-            t7 = tmp3 - tmp7;
-            t8 = tmp8 + tmp12;   //*W(0,16)
-            t9 = tmp9 + tmp13;   //*W(1,16)
-            t10 = tmp10 + tmp14; //*W(2,16)
-            t11 = tmp11 + tmp15; //*W(3,16)
-            t12 = tmp8 - tmp12;  //*W(4,16)
-            t13 = tmp9 - tmp13;  //*W(5,16)
-            t14 = tmp10 - tmp14; //*W(6,16)
-            t15 = tmp11 - tmp15; //*W(7,16)
             static constexpr double cos_1_16 = 0.92387953251128675612818318939679;
             static constexpr double sin_1_16 = 0.3826834323650897717284599840304;
             static constexpr Complex w1(cos_1_16, -sin_1_16), w3(sin_1_16, -cos_1_16);
             static constexpr Complex w5(-sin_1_16, -cos_1_16), w7(-cos_1_16, -sin_1_16);
-            t9 *= w1;
-            t10 = cos_1_8 * Complex(t10.imag() + t10.real(), t10.imag() - t10.real());
-            t11 *= w3;
-            t12 = Complex(t12.imag(), -t12.real());
-            t13 *= w5;
-            t14 = -cos_1_8 * Complex(t14.real() - t14.imag(), t14.real() + t14.imag());
-            t15 *= w7;
 
-            input[0] = t0 + t8;
-            input[rank] = t1 + t9;
-            input[rank * 2] = t2 + t10;
-            input[rank * 3] = t3 + t11;
-            input[rank * 4] = t4 + t12;
-            input[rank * 5] = t5 + t13;
-            input[rank * 6] = t6 + t14;
-            input[rank * 7] = t7 + t15;
-            input[rank * 8] = t0 - t8;
-            input[rank * 9] = t1 - t9;
-            input[rank * 10] = t2 - t10;
-            input[rank * 11] = t3 - t11;
-            input[rank * 12] = t4 - t12;
-            input[rank * 13] = t5 - t13;
-            input[rank * 14] = t6 - t14;
-            input[rank * 15] = t7 - t15;
+            fft_dit_8point(input, rank);
+            fft_dit_8point(input + rank * 8, rank);
+
+            Complex tmp0 = input[0];
+            Complex tmp1 = input[rank];
+            Complex tmp2 = input[rank * 8];
+            Complex tmp3 = input[rank * 9] * w1;
+            input[0] = tmp0 + tmp2;
+            input[rank] = tmp1 + tmp3;
+            input[rank * 8] = tmp0 - tmp2;
+            input[rank * 9] = tmp1 - tmp3;
+
+            tmp0 = input[rank * 2];
+            tmp1 = input[rank * 3];
+            tmp2 = input[rank * 10];
+            tmp3 = input[rank * 11] * w3;
+            tmp2 = cos_1_8 * Complex(tmp2.imag() + tmp2.real(), tmp2.imag() - tmp2.real());
+            input[rank * 2] = tmp0 + tmp2;
+            input[rank * 3] = tmp1 + tmp3;
+            input[rank * 10] = tmp0 - tmp2;
+            input[rank * 11] = tmp1 - tmp3;
+
+            tmp0 = input[rank * 4];
+            tmp1 = input[rank * 5];
+            tmp2 = input[rank * 12];
+            tmp3 = input[rank * 13] * w5;
+            tmp2 = Complex(tmp2.imag(), -tmp2.real());
+            input[rank * 4] = tmp0 + tmp2;
+            input[rank * 5] = tmp1 + tmp3;
+            input[rank * 12] = tmp0 - tmp2;
+            input[rank * 13] = tmp1 - tmp3;
+
+            tmp0 = input[rank * 6];
+            tmp1 = input[rank * 7];
+            tmp2 = input[rank * 14];
+            tmp3 = input[rank * 15] * w7;
+            tmp2 = -cos_1_8 * Complex(tmp2.real() - tmp2.imag(), tmp2.real() + tmp2.imag());
+            input[rank * 6] = tmp0 + tmp2;
+            input[rank * 7] = tmp1 + tmp3;
+            input[rank * 14] = tmp0 - tmp2;
+            input[rank * 15] = tmp1 - tmp3;
         }
-        inline void fft_dit_32point(Complex *input, size_t rank)
+        inline void fft_dit_32point(Complex* input, size_t rank = 1)
         {
             static constexpr double cos_1_8 = 0.70710678118654752440084436210485;
-
             static constexpr double cos_1_16 = 0.92387953251128675612818318939679;
             static constexpr double sin_1_16 = 0.3826834323650897717284599840304;
-
             static constexpr double cos_1_32 = 0.98078528040323044912618223613424;
             static constexpr double sin_1_32 = 0.19509032201612826784828486847702;
-
             static constexpr double cos_3_32 = 0.83146961230254523707878837761791;
             static constexpr double sin_3_32 = 0.55557023301960222474283081394853;
+            static constexpr Complex w1(cos_1_32, -sin_1_32), w2(cos_1_16, -sin_1_16), w3(cos_3_32, -sin_3_32);
+            static constexpr Complex w5(sin_3_32, -cos_3_32), w6(sin_1_16, -cos_1_16), w7(sin_1_32, -cos_1_32);
+            static constexpr Complex w9(-sin_1_32, -cos_1_32), w10(-sin_1_16, -cos_1_16), w11(-sin_3_32, -cos_3_32);
+            static constexpr Complex w13(-cos_3_32, -sin_3_32), w14(-cos_1_16, -sin_1_16), w15(-cos_1_32, -sin_1_32);
 
-            static constexpr Complex w_table[16] = {
-                {1, 0}, {cos_1_32, -sin_1_32}, {cos_1_16, -sin_1_16}, {cos_3_32, -sin_3_32}, {cos_1_8, -cos_1_8}, {sin_3_32, -cos_3_32}, {sin_1_16, -cos_1_16}, {sin_1_32, -cos_1_32}, {0, -1}, {-sin_1_32, -cos_1_32}, {-sin_1_16, -cos_1_16}, {-sin_3_32, -cos_3_32}, {-cos_1_8, -cos_1_8}, {-cos_3_32, -sin_3_32}, {-cos_1_16, -sin_1_16}, {-cos_1_32, -sin_1_32}};
             fft_dit_16point(input, rank);
             fft_dit_16point(input + rank * 16, rank);
-            for (size_t i = 0; i < 16; i += 2)
-            {
-                Complex tmp0 = input[i * rank];
-                Complex tmp1 = input[(i + 16) * rank] * w_table[i];
-                input[i * rank] = tmp0 + tmp1;
-                input[(i + 16) * rank] = tmp0 - tmp1;
-                tmp0 = input[(i + 1) * rank];
-                tmp1 = input[(i + 17) * rank] * w_table[i + 1];
-                input[(i + 1) * rank] = tmp0 + tmp1;
-                input[(i + 17) * rank] = tmp0 - tmp1;
-            }
-        }
 
-        inline void fft_dif_4point(Complex *input, size_t rank)
+            Complex tmp0 = input[0];
+            Complex tmp1 = input[rank];
+            Complex tmp2 = input[rank * 16];
+            Complex tmp3 = input[rank * 17] * w1;
+            input[0] = tmp0 + tmp2;
+            input[rank] = tmp1 + tmp3;
+            input[rank * 16] = tmp0 - tmp2;
+            input[rank * 17] = tmp1 - tmp3;
+
+            tmp0 = input[rank * 2];
+            tmp1 = input[rank * 3];
+            tmp2 = input[rank * 18] * w2;
+            tmp3 = input[rank * 19] * w3;
+            input[rank * 2] = tmp0 + tmp2;
+            input[rank * 3] = tmp1 + tmp3;
+            input[rank * 18] = tmp0 - tmp2;
+            input[rank * 19] = tmp1 - tmp3;
+
+            tmp0 = input[rank * 4];
+            tmp1 = input[rank * 5];
+            tmp2 = input[rank * 20];
+            tmp3 = input[rank * 21] * w5;
+            tmp2 = cos_1_8 * Complex(tmp2.imag() + tmp2.real(), tmp2.imag() - tmp2.real());
+            input[rank * 4] = tmp0 + tmp2;
+            input[rank * 5] = tmp1 + tmp3;
+            input[rank * 20] = tmp0 - tmp2;
+            input[rank * 21] = tmp1 - tmp3;
+
+            tmp0 = input[rank * 6];
+            tmp1 = input[rank * 7];
+            tmp2 = input[rank * 22] * w6;
+            tmp3 = input[rank * 23] * w7;
+            input[rank * 6] = tmp0 + tmp2;
+            input[rank * 7] = tmp1 + tmp3;
+            input[rank * 22] = tmp0 - tmp2;
+            input[rank * 23] = tmp1 - tmp3;
+
+            tmp0 = input[rank * 8];
+            tmp1 = input[rank * 9];
+            tmp2 = input[rank * 24];
+            tmp3 = input[rank * 25] * w9;
+            tmp2 = Complex(tmp2.imag(), -tmp2.real());
+            input[rank * 8] = tmp0 + tmp2;
+            input[rank * 9] = tmp1 + tmp3;
+            input[rank * 24] = tmp0 - tmp2;
+            input[rank * 25] = tmp1 - tmp3;
+
+            tmp0 = input[rank * 10];
+            tmp1 = input[rank * 11];
+            tmp2 = input[rank * 26] * w10;
+            tmp3 = input[rank * 27] * w11;
+            input[rank * 10] = tmp0 + tmp2;
+            input[rank * 11] = tmp1 + tmp3;
+            input[rank * 26] = tmp0 - tmp2;
+            input[rank * 27] = tmp1 - tmp3;
+
+            tmp0 = input[rank * 12];
+            tmp1 = input[rank * 13];
+            tmp2 = input[rank * 28];
+            tmp3 = input[rank * 29] * w13;
+            tmp2 = -cos_1_8 * Complex(tmp2.real() - tmp2.imag(), tmp2.real() + tmp2.imag());
+            input[rank * 12] = tmp0 + tmp2;
+            input[rank * 13] = tmp1 + tmp3;
+            input[rank * 28] = tmp0 - tmp2;
+            input[rank * 29] = tmp1 - tmp3;
+
+            tmp0 = input[rank * 14];
+            tmp1 = input[rank * 15];
+            tmp2 = input[rank * 30] * w14;
+            tmp3 = input[rank * 31] * w15;
+
+            input[rank * 14] = tmp0 + tmp2;
+            input[rank * 15] = tmp1 + tmp3;
+            input[rank * 30] = tmp0 - tmp2;
+            input[rank * 31] = tmp1 - tmp3;
+        }
+        inline void fft_dif_4point(Complex* input, size_t rank = 1)
         {
             Complex tmp0 = input[0];
             Complex tmp1 = input[rank];
             Complex tmp2 = input[rank * 2];
             Complex tmp3 = input[rank * 3];
 
-            Complex t0 = tmp0 + tmp2;
-            Complex t1 = tmp1 + tmp3;
-            Complex t2 = tmp0 - tmp2;
-            Complex t3 = tmp1 - tmp3;
-            t3 = Complex(t3.imag(), -t3.real());
+            fft_2point(tmp0, tmp2);
+            fft_2point(tmp1, tmp3);
+            tmp3 = Complex(tmp3.imag(), -tmp3.real());
 
-            input[0] = t0 + t1;
-            input[rank] = t0 - t1;
-            input[rank * 2] = t2 + t3;
-            input[rank * 3] = t2 - t3;
+            input[0] = tmp0 + tmp1;
+            input[rank] = tmp0 - tmp1;
+            input[rank * 2] = tmp2 + tmp3;
+            input[rank * 3] = tmp2 - tmp3;
         }
-        inline void fft_dif_8point(Complex *input, size_t rank)
+        inline void fft_dif_8point(Complex* input, size_t rank = 1)
         {
             Complex tmp0 = input[0];
             Complex tmp1 = input[rank];
@@ -970,180 +958,183 @@ namespace hint
             Complex tmp6 = input[rank * 6];
             Complex tmp7 = input[rank * 7];
 
-            Complex t0 = tmp0 + tmp4;
-            Complex t1 = tmp0 - tmp4;
-            Complex t2 = tmp2 + tmp6;
-            Complex t3 = tmp2 - tmp6;
-            Complex t4 = tmp1 + tmp5;
-            Complex t5 = tmp1 - tmp5;
-            Complex t6 = tmp3 + tmp7;
-            Complex t7 = tmp3 - tmp7;
-            t3 = Complex(t3.imag(), -t3.real());
-            t7 = Complex(t7.imag(), -t7.real());
-
-            tmp0 = t0 + t2;
-            tmp1 = t1 + t3;
-            tmp2 = t0 - t2;
-            tmp3 = t1 - t3;
-            tmp4 = t4 + t6;
-            tmp5 = t5 + t7;
-            tmp6 = t4 - t6;
-            tmp7 = t5 - t7;
+            fft_2point(tmp0, tmp4);
+            fft_2point(tmp1, tmp5);
+            fft_2point(tmp2, tmp6);
+            fft_2point(tmp3, tmp7);
             static constexpr double cos_1_8 = 0.70710678118654752440084436210485;
             tmp5 = cos_1_8 * Complex(tmp5.imag() + tmp5.real(), tmp5.imag() - tmp5.real());
             tmp6 = Complex(tmp6.imag(), -tmp6.real());
             tmp7 = -cos_1_8 * Complex(tmp7.real() - tmp7.imag(), tmp7.real() + tmp7.imag());
 
-            input[0] = tmp0 + tmp4;
-            input[rank] = tmp0 - tmp4;
-            input[rank * 2] = tmp2 + tmp6;
-            input[rank * 3] = tmp2 - tmp6;
-            input[rank * 4] = tmp1 + tmp5;
-            input[rank * 5] = tmp1 - tmp5;
-            input[rank * 6] = tmp3 + tmp7;
-            input[rank * 7] = tmp3 - tmp7;
+            fft_2point(tmp0, tmp2);
+            fft_2point(tmp1, tmp3);
+            fft_2point(tmp4, tmp6);
+            fft_2point(tmp5, tmp7);
+            tmp3 = Complex(tmp3.imag(), -tmp3.real());
+            tmp7 = Complex(tmp7.imag(), -tmp7.real());
+
+            input[0] = tmp0 + tmp1;
+            input[rank] = tmp0 - tmp1;
+            input[rank * 2] = tmp2 + tmp3;
+            input[rank * 3] = tmp2 - tmp3;
+            input[rank * 4] = tmp4 + tmp5;
+            input[rank * 5] = tmp4 - tmp5;
+            input[rank * 6] = tmp6 + tmp7;
+            input[rank * 7] = tmp6 - tmp7;
         }
-        inline void fft_dif_16point(Complex *input, size_t rank)
+        inline void fft_dif_16point(Complex* input, size_t rank = 1)
         {
-            Complex tmp0 = input[0];
-            Complex tmp1 = input[rank];
-            Complex tmp2 = input[rank * 2];
-            Complex tmp3 = input[rank * 3];
-            Complex tmp4 = input[rank * 4];
-            Complex tmp5 = input[rank * 5];
-            Complex tmp6 = input[rank * 6];
-            Complex tmp7 = input[rank * 7];
-            Complex tmp8 = input[rank * 8];
-            Complex tmp9 = input[rank * 9];
-            Complex tmp10 = input[rank * 10];
-            Complex tmp11 = input[rank * 11];
-            Complex tmp12 = input[rank * 12];
-            Complex tmp13 = input[rank * 13];
-            Complex tmp14 = input[rank * 14];
-            Complex tmp15 = input[rank * 15];
-
-            Complex t0 = tmp0 + tmp8;
-            Complex t1 = tmp0 - tmp8;
-            Complex t2 = tmp4 + tmp12; //*W(0,4)
-            Complex t3 = tmp4 - tmp12; //*W(1,4)
-            Complex t4 = tmp2 + tmp10;
-            Complex t5 = tmp2 - tmp10;
-            Complex t6 = tmp6 + tmp14; //*W(0,4)
-            Complex t7 = tmp6 - tmp14; //*W(1,4)
-            Complex t8 = tmp1 + tmp9;
-            Complex t9 = tmp1 - tmp9;
-            Complex t10 = tmp5 + tmp13; //*W(0,4)
-            Complex t11 = tmp5 - tmp13; //*W(1,4)
-            Complex t12 = tmp3 + tmp11;
-            Complex t13 = tmp3 - tmp11;
-            Complex t14 = tmp7 + tmp15; //*W(0,4)
-            Complex t15 = tmp7 - tmp15; //*W(1,4)
-            t3 = Complex(t3.imag(), -t3.real());
-            t7 = Complex(t7.imag(), -t7.real());
-            t11 = Complex(t11.imag(), -t11.real());
-            t15 = Complex(t15.imag(), -t15.real());
-
-            tmp0 = t0 + t2;
-            tmp1 = t1 + t3;
-            tmp2 = t0 - t2;
-            tmp3 = t1 - t3;
-            tmp4 = t4 + t6; //*W(0,8)
-            tmp5 = t5 + t7; //*W(1,8)
-            tmp6 = t4 - t6; //*W(2,8)
-            tmp7 = t5 - t7; //*W(3,8)
-            tmp8 = t8 + t10;
-            tmp9 = t9 + t11;
-            tmp10 = t8 - t10;
-            tmp11 = t9 - t11;
-            tmp12 = t12 + t14; //*W(0,8)
-            tmp13 = t13 + t15; //*W(1,8)
-            tmp14 = t12 - t14; //*W(2,8)
-            tmp15 = t13 - t15; //*W(3,8)
             static constexpr double cos_1_8 = 0.70710678118654752440084436210485;
-            tmp5 = cos_1_8 * Complex(tmp5.imag() + tmp5.real(), tmp5.imag() - tmp5.real());
-            tmp6 = Complex(tmp6.imag(), -tmp6.real());
-            tmp7 = -cos_1_8 * Complex(tmp7.real() - tmp7.imag(), tmp7.real() + tmp7.imag());
-            tmp13 = cos_1_8 * Complex(tmp13.imag() + tmp13.real(), tmp13.imag() - tmp13.real());
-            tmp14 = Complex(tmp14.imag(), -tmp14.real());
-            tmp15 = -cos_1_8 * Complex(tmp15.real() - tmp15.imag(), tmp15.real() + tmp15.imag());
-
-            t0 = tmp0 + tmp4;
-            t1 = tmp1 + tmp5;
-            t2 = tmp2 + tmp6;
-            t3 = tmp3 + tmp7;
-            t4 = tmp0 - tmp4;
-            t5 = tmp1 - tmp5;
-            t6 = tmp2 - tmp6;
-            t7 = tmp3 - tmp7;
-            t8 = tmp8 + tmp12;   //*W(0,16)
-            t9 = tmp9 + tmp13;   //*W(1,16)
-            t10 = tmp10 + tmp14; //*W(2,16)
-            t11 = tmp11 + tmp15; //*W(3,16)
-            t12 = tmp8 - tmp12;  //*W(4,16)
-            t13 = tmp9 - tmp13;  //*W(5,16)
-            t14 = tmp10 - tmp14; //*W(6,16)
-            t15 = tmp11 - tmp15; //*W(7,16)
             static constexpr double cos_1_16 = 0.92387953251128675612818318939679;
             static constexpr double sin_1_16 = 0.3826834323650897717284599840304;
             static constexpr Complex w1(cos_1_16, -sin_1_16), w3(sin_1_16, -cos_1_16);
             static constexpr Complex w5(-sin_1_16, -cos_1_16), w7(-cos_1_16, -sin_1_16);
-            t9 *= w1;
-            t10 = cos_1_8 * Complex(t10.imag() + t10.real(), t10.imag() - t10.real());
-            t11 *= w3;
-            t12 = Complex(t12.imag(), -t12.real());
-            t13 *= w5;
-            t14 = -cos_1_8 * Complex(t14.real() - t14.imag(), t14.real() + t14.imag());
-            t15 *= w7;
 
-            input[0] = t0 + t8;
-            input[rank] = t0 - t8;
-            input[rank * 2] = t4 + t12;
-            input[rank * 3] = t4 - t12;
-            input[rank * 4] = t2 + t10;
-            input[rank * 5] = t2 - t10;
-            input[rank * 6] = t6 + t14;
-            input[rank * 7] = t6 - t14;
-            input[rank * 8] = t1 + t9;
-            input[rank * 9] = t1 - t9;
-            input[rank * 10] = t5 + t13;
-            input[rank * 11] = t5 - t13;
-            input[rank * 12] = t3 + t11;
-            input[rank * 13] = t3 - t11;
-            input[rank * 14] = t7 + t15;
-            input[rank * 15] = t7 - t15;
+            Complex tmp0 = input[0];
+            Complex tmp1 = input[rank];
+            Complex tmp2 = input[rank * 8];
+            Complex tmp3 = input[rank * 9];
+            input[0] = tmp0 + tmp2;
+            input[rank] = tmp1 + tmp3;
+            input[rank * 8] = tmp0 - tmp2;
+            input[rank * 9] = (tmp1 - tmp3) * w1;
+
+            tmp0 = input[rank * 2];
+            tmp1 = input[rank * 3];
+            tmp2 = input[rank * 10];
+            tmp3 = input[rank * 11];
+            fft_2point(tmp0, tmp2);
+            tmp2 = cos_1_8 * Complex(tmp2.imag() + tmp2.real(), tmp2.imag() - tmp2.real());
+            input[rank * 2] = tmp0;
+            input[rank * 3] = tmp1 + tmp3;
+            input[rank * 10] = tmp2;
+            input[rank * 11] = (tmp1 - tmp3) * w3;
+
+            tmp0 = input[rank * 4];
+            tmp1 = input[rank * 5];
+            tmp2 = input[rank * 12];
+            tmp3 = input[rank * 13];
+            fft_2point(tmp0, tmp2);
+            tmp2 = Complex(tmp2.imag(), -tmp2.real());
+            input[rank * 4] = tmp0;
+            input[rank * 5] = tmp1 + tmp3;
+            input[rank * 12] = tmp2;
+            input[rank * 13] = (tmp1 - tmp3) * w5;
+
+            tmp0 = input[rank * 6];
+            tmp1 = input[rank * 7];
+            tmp2 = input[rank * 14];
+            tmp3 = input[rank * 15];
+            fft_2point(tmp0, tmp2);
+            tmp2 = -cos_1_8 * Complex(tmp2.real() - tmp2.imag(), tmp2.real() + tmp2.imag());
+            input[rank * 6] = tmp0;
+            input[rank * 7] = tmp1 + tmp3;
+            input[rank * 14] = tmp2;
+            input[rank * 15] = (tmp1 - tmp3) * w7;
+
+            fft_dif_8point(input, rank);
+            fft_dif_8point(input + rank * 8, rank);
         }
-        inline void fft_dif_32point(Complex *input, size_t rank)
+        inline void fft_dif_32point(Complex* input, size_t rank = 1)
         {
             static constexpr double cos_1_8 = 0.70710678118654752440084436210485;
-
             static constexpr double cos_1_16 = 0.92387953251128675612818318939679;
             static constexpr double sin_1_16 = 0.3826834323650897717284599840304;
-
             static constexpr double cos_1_32 = 0.98078528040323044912618223613424;
             static constexpr double sin_1_32 = 0.19509032201612826784828486847702;
-
             static constexpr double cos_3_32 = 0.83146961230254523707878837761791;
             static constexpr double sin_3_32 = 0.55557023301960222474283081394853;
+            static constexpr Complex w1(cos_1_32, -sin_1_32), w2(cos_1_16, -sin_1_16), w3(cos_3_32, -sin_3_32);
+            static constexpr Complex w5(sin_3_32, -cos_3_32), w6(sin_1_16, -cos_1_16), w7(sin_1_32, -cos_1_32);
+            static constexpr Complex w9(-sin_1_32, -cos_1_32), w10(-sin_1_16, -cos_1_16), w11(-sin_3_32, -cos_3_32);
+            static constexpr Complex w13(-cos_3_32, -sin_3_32), w14(-cos_1_16, -sin_1_16), w15(-cos_1_32, -sin_1_32);
 
-            static constexpr Complex w_table[16] = {
-                {1, 0}, {cos_1_32, -sin_1_32}, {cos_1_16, -sin_1_16}, {cos_3_32, -sin_3_32}, {cos_1_8, -cos_1_8}, {sin_3_32, -cos_3_32}, {sin_1_16, -cos_1_16}, {sin_1_32, -cos_1_32}, {0, -1}, {-sin_1_32, -cos_1_32}, {-sin_1_16, -cos_1_16}, {-sin_3_32, -cos_3_32}, {-cos_1_8, -cos_1_8}, {-cos_3_32, -sin_3_32}, {-cos_1_16, -sin_1_16}, {-cos_1_32, -sin_1_32}};
+            Complex tmp0 = input[0];
+            Complex tmp1 = input[rank];
+            Complex tmp2 = input[rank * 16];
+            Complex tmp3 = input[rank * 17];
+            input[0] = tmp0 + tmp2;
+            input[rank] = tmp1 + tmp3;
+            input[rank * 16] = tmp0 - tmp2;
+            input[rank * 17] = (tmp1 - tmp3) * w1;
 
-            for (size_t i = 0; i < 16; i += 2)
-            {
-                Complex tmp0 = input[i * rank];
-                Complex tmp1 = input[(i + 16) * rank];
-                input[i * rank] = tmp0 + tmp1;
-                input[(i + 16) * rank] = (tmp0 - tmp1) * w_table[i];
-                tmp0 = input[(i + 1) * rank];
-                tmp1 = input[(i + 17) * rank];
-                input[(i + 1) * rank] = tmp0 + tmp1;
-                input[(i + 17) * rank] = (tmp0 - tmp1) * w_table[i + 1];
-            }
+            tmp0 = input[rank * 2];
+            tmp1 = input[rank * 3];
+            tmp2 = input[rank * 18];
+            tmp3 = input[rank * 19];
+            input[rank * 2] = tmp0 + tmp2;
+            input[rank * 3] = tmp1 + tmp3;
+            input[rank * 18] = (tmp0 - tmp2) * w2;
+            input[rank * 19] = (tmp1 - tmp3) * w3;
+
+            tmp0 = input[rank * 4];
+            tmp1 = input[rank * 5];
+            tmp2 = input[rank * 20];
+            tmp3 = input[rank * 21];
+            fft_2point(tmp0, tmp2);
+            tmp2 = cos_1_8 * Complex(tmp2.imag() + tmp2.real(), tmp2.imag() - tmp2.real());
+            input[rank * 4] = tmp0;
+            input[rank * 5] = tmp1 + tmp3;
+            input[rank * 20] = tmp2;
+            input[rank * 21] = (tmp1 - tmp3) * w5;
+
+            tmp0 = input[rank * 6];
+            tmp1 = input[rank * 7];
+            tmp2 = input[rank * 22];
+            tmp3 = input[rank * 23];
+            input[rank * 6] = tmp0 + tmp2;
+            input[rank * 7] = tmp1 + tmp3;
+            input[rank * 22] = (tmp0 - tmp2) * w6;
+            input[rank * 23] = (tmp1 - tmp3) * w7;
+
+            tmp0 = input[rank * 8];
+            tmp1 = input[rank * 9];
+            tmp2 = input[rank * 24];
+            tmp3 = input[rank * 25];
+            fft_2point(tmp0, tmp2);
+            tmp2 = Complex(tmp2.imag(), -tmp2.real());
+            input[rank * 8] = tmp0;
+            input[rank * 9] = tmp1 + tmp3;
+            input[rank * 24] = tmp2;
+            input[rank * 25] = (tmp1 - tmp3) * w9;
+
+            tmp0 = input[rank * 10];
+            tmp1 = input[rank * 11];
+            tmp2 = input[rank * 26];
+            tmp3 = input[rank * 27];
+            input[rank * 10] = tmp0 + tmp2;
+            input[rank * 11] = tmp1 + tmp3;
+            input[rank * 26] = (tmp0 - tmp2) * w10;
+            input[rank * 27] = (tmp1 - tmp3) * w11;
+
+            tmp0 = input[rank * 12];
+            tmp1 = input[rank * 13];
+            tmp2 = input[rank * 28];
+            tmp3 = input[rank * 29];
+            fft_2point(tmp0, tmp2);
+            tmp2 = -cos_1_8 * Complex(tmp2.real() - tmp2.imag(), tmp2.real() + tmp2.imag());
+            input[rank * 12] = tmp0;
+            input[rank * 13] = tmp1 + tmp3;
+            input[rank * 28] = tmp2;
+            input[rank * 29] = (tmp1 - tmp3) * w13;
+
+            tmp0 = input[rank * 14];
+            tmp1 = input[rank * 15];
+            tmp2 = input[rank * 30];
+            tmp3 = input[rank * 31];
+
+            input[rank * 14] = tmp0 + tmp2;
+            input[rank * 15] = tmp1 + tmp3;
+            input[rank * 30] = (tmp0 - tmp2) * w14;
+            input[rank * 31] = (tmp1 - tmp3) * w15;
+
             fft_dif_16point(input, rank);
             fft_dif_16point(input + rank * 16, rank);
         }
+
         // fft基2时间抽取蝶形变换
-        inline void fft_radix2_dit_butterfly(Complex omega, Complex *input, size_t rank)
+        inline void fft_radix2_dit_butterfly(Complex omega, Complex* input, size_t rank)
         {
             Complex tmp0 = input[0];
             Complex tmp1 = input[rank] * omega;
@@ -1151,7 +1142,7 @@ namespace hint
             input[rank] = tmp0 - tmp1;
         }
         // fft基2频率抽取蝶形变换
-        inline void fft_radix2_dif_butterfly(Complex omega, Complex *input, size_t rank)
+        inline void fft_radix2_dif_butterfly(Complex omega, Complex* input, size_t rank)
         {
             Complex tmp0 = input[0];
             Complex tmp1 = input[rank];
@@ -1168,14 +1159,13 @@ namespace hint
             Complex tmp2 = input[rank * 2] * omega;
             Complex tmp3 = input[rank * 3] * omega_cube;
 
-            Complex tmp4 = tmp2 + tmp3;
-            Complex tmp5 = tmp2 - tmp3;
-            tmp5 = Complex(tmp5.imag(), -tmp5.real());
+            fft_2point(tmp2, tmp3);
+            tmp3 = Complex(tmp3.imag(), -tmp3.real());
 
-            input[0] = tmp0 + tmp4;
-            input[rank] = tmp1 + tmp5;
-            input[rank * 2] = tmp0 - tmp4;
-            input[rank * 3] = tmp1 - tmp5;
+            input[0] = tmp0 + tmp2;
+            input[rank] = tmp1 + tmp3;
+            input[rank * 2] = tmp0 - tmp2;
+            input[rank * 3] = tmp1 - tmp3;
         }
         // fft分裂基频率抽取蝶形变换
         inline void fft_split_radix_dif_butterfly(Complex omega, Complex omega_cube,
@@ -1186,17 +1176,18 @@ namespace hint
             Complex tmp2 = input[rank * 2];
             Complex tmp3 = input[rank * 3];
 
-            Complex tmp4 = tmp0 - tmp2;
-            Complex tmp5 = tmp1 - tmp3;
-            tmp5 = Complex(-tmp5.imag(), tmp5.real());
+            fft_2point(tmp0, tmp2);
+            fft_2point(tmp1, tmp3);
+            tmp3 = Complex(-tmp3.imag(), tmp3.real());
 
-            input[0] = tmp0 + tmp2;
-            input[rank] = tmp1 + tmp3;
-            input[rank * 2] = (tmp4 - tmp5) * omega;
-            input[rank * 3] = (tmp4 + tmp5) * omega_cube;
+            input[0] = tmp0;
+            input[rank] = tmp1;
+            input[rank * 2] = (tmp2 - tmp3) * omega;
+            input[rank * 3] = (tmp2 + tmp3) * omega_cube;
         }
+        // fft基4时间抽取蝶形变换
         inline void fft_radix4_dit_butterfly(Complex omega, Complex omega_sqr, Complex omega_cube,
-                                             Complex *input, size_t rank)
+            Complex* input, size_t rank)
         {
             Complex tmp0 = input[0];
             Complex tmp1 = input[rank] * omega;
@@ -1216,7 +1207,7 @@ namespace hint
         }
         // fft基4频率抽取蝶形变换
         inline void fft_radix4_dif_butterfly(Complex omega, Complex omega_sqr, Complex omega_cube,
-                                             Complex *input, size_t rank)
+            Complex* input, size_t rank)
         {
             Complex tmp0 = input[0];
             Complex tmp1 = input[rank];
@@ -1235,7 +1226,7 @@ namespace hint
             input[rank * 3] = (t2 - t3) * omega_cube;
         }
         // 求共轭复数及归一化，逆变换用
-        inline void fft_conj(Complex *input, size_t fft_len, double div = 1)
+        inline void fft_conj(Complex* input, size_t fft_len, double div = 1)
         {
             for (size_t i = 0; i < fft_len; i++)
             {
@@ -1243,7 +1234,7 @@ namespace hint
             }
         }
         // 归一化,逆变换用
-        inline void fft_normalize(Complex *input, size_t fft_len)
+        inline void fft_normalize(Complex* input, size_t fft_len)
         {
             double len = static_cast<double>(fft_len);
             for (size_t i = 0; i < fft_len; i++)
@@ -1252,7 +1243,7 @@ namespace hint
             }
         }
         // 经典模板,学习用
-        void fft_radix2_dit(Complex *input, size_t fft_len)
+        void fft_radix2_dit(Complex* input, size_t fft_len)
         {
             fft_len = max_2pow(fft_len);
             binary_inverse_swap(input, fft_len);
@@ -1273,7 +1264,7 @@ namespace hint
             }
         }
         // 基4快速傅里叶变换,模板,学习用
-        void fft_radix4_dit(Complex *input, size_t fft_len)
+        void fft_radix4_dit(Complex* input, size_t fft_len)
         {
             size_t log4_len = hint_log2(fft_len) / 2;
             fft_len = 1ull << (log4_len * 2);
@@ -1306,7 +1297,7 @@ namespace hint
             }
         }
         // 基2查时间抽取FFT
-        void fft_radix2_dit_lut(Complex *input, size_t fft_len, bool bit_inv = true)
+        void fft_radix2_dit_lut(Complex* input, size_t fft_len, bool bit_inv = true)
         {
             if (fft_len <= 1)
             {
@@ -1352,7 +1343,7 @@ namespace hint
             }
         }
         // 基2查频率抽取FFT
-        void fft_radix2_dif_lut(Complex *input, size_t fft_len, const bool bit_inv = true)
+        void fft_radix2_dif_lut(Complex* input, size_t fft_len, const bool bit_inv = true)
         {
             if (fft_len <= 1)
             {
@@ -1405,7 +1396,7 @@ namespace hint
         {
             static constexpr size_t gap = RANK * 2;
             static constexpr size_t log_len = hint_log2(gap);
-            static void fft_dit_loop1(Complex *input)
+            static void fft_dit_loop1(Complex* input)
             {
                 FFT_LOOP1<RANK / 2, LEN>::fft_dit_loop1(input);
                 for (size_t begin = 0; begin < LEN; begin += (gap * 2))
@@ -1421,7 +1412,7 @@ namespace hint
                     }
                 }
             }
-            static void fft_dif_loop1(Complex *input)
+            static void fft_dif_loop1(Complex* input)
             {
                 for (size_t begin = 0; begin < LEN; begin += (gap * 2))
                 {
@@ -1441,13 +1432,13 @@ namespace hint
         struct FFT_LOOP1<1, LEN>
         {
         public:
-            static void fft_dit_loop1(Complex *input) {}
-            static void fft_dif_loop1(Complex *input) {}
+            static void fft_dit_loop1(Complex* input) {}
+            static void fft_dif_loop1(Complex* input) {}
         };
 
         // 模板化时间抽取基2FFT
         template <size_t LEN>
-        void fft_radix2_dit_template(Complex *input)
+        void fft_radix2_dit_template(Complex* input)
         {
             for (size_t i = 0; i < LEN; i += 2)
             {
@@ -1462,17 +1453,17 @@ namespace hint
             }
         }
         template <>
-        void fft_radix2_dit_template<0>(Complex *input) {}
+        void fft_radix2_dit_template<0>(Complex* input) {}
         template <>
-        void fft_radix2_dit_template<1>(Complex *input) {}
+        void fft_radix2_dit_template<1>(Complex* input) {}
         template <>
-        void fft_radix2_dit_template<2>(Complex *input)
+        void fft_radix2_dit_template<2>(Complex* input)
         {
             fft_2point(input[0], input[1]);
         }
         template <size_t LEN>
         // 模板化频率抽取基2FFT
-        void fft_radix2_dif_template(Complex *input)
+        void fft_radix2_dif_template(Complex* input)
         {
             constexpr INT_32 log_len = hint_log2(LEN);
             for (size_t pos = 0; pos < LEN / 2; pos++)
@@ -1487,18 +1478,18 @@ namespace hint
             }
         }
         template <>
-        void fft_radix2_dif_template<0>(Complex *input) {}
+        void fft_radix2_dif_template<0>(Complex* input) {}
         template <>
-        void fft_radix2_dif_template<1>(Complex *input) {}
+        void fft_radix2_dif_template<1>(Complex* input) {}
         template <>
-        void fft_radix2_dif_template<2>(Complex *input)
+        void fft_radix2_dif_template<2>(Complex* input)
         {
             fft_2point(input[0], input[1]);
         }
 #endif
         // 模板化时间抽取分裂基fft
         template <size_t LEN>
-        void fft_split_radix_dit_template(Complex *input)
+        void fft_split_radix_dit_template(Complex* input)
         {
             constexpr size_t log_len = hint_log2(LEN);
             constexpr size_t half_len = LEN / 2, quarter_len = LEN / 4;
@@ -1513,26 +1504,26 @@ namespace hint
             }
         }
         template <>
-        void fft_split_radix_dit_template<0>(Complex *input) {}
+        void fft_split_radix_dit_template<0>(Complex* input) {}
         template <>
-        void fft_split_radix_dit_template<1>(Complex *input) {}
+        void fft_split_radix_dit_template<1>(Complex* input) {}
         template <>
-        void fft_split_radix_dit_template<2>(Complex *input)
+        void fft_split_radix_dit_template<2>(Complex* input)
         {
             fft_2point(input[0], input[1]);
         }
         template <>
-        void fft_split_radix_dit_template<4>(Complex *input)
+        void fft_split_radix_dit_template<4>(Complex* input)
         {
             fft_dit_4point(input, 1);
         }
         template <>
-        void fft_split_radix_dit_template<8>(Complex *input)
+        void fft_split_radix_dit_template<8>(Complex* input)
         {
             fft_dit_8point(input, 1);
         }
         template <>
-        void fft_split_radix_dit_template<16>(Complex *input)
+        void fft_split_radix_dit_template<16>(Complex* input)
         {
 #ifdef FFT_R2_TEMPLATE
             fft_radix2_dit_template<16>(input);
@@ -1541,7 +1532,7 @@ namespace hint
 #endif
         }
         template <>
-        void fft_split_radix_dit_template<32>(Complex *input)
+        void fft_split_radix_dit_template<32>(Complex* input)
         {
 #ifdef FFT_R2_TEMPLATE
             fft_radix2_dit_template<32>(input);
@@ -1552,7 +1543,7 @@ namespace hint
 
         // 模板化频率抽取分裂基fft
         template <size_t LEN>
-        void fft_split_radix_dif_template(Complex *input)
+        void fft_split_radix_dif_template(Complex* input)
         {
             constexpr size_t log_len = hint_log2(LEN);
             constexpr size_t half_len = LEN / 2, quarter_len = LEN / 4;
@@ -1567,26 +1558,26 @@ namespace hint
             fft_split_radix_dif_template<quarter_len>(input + half_len + quarter_len);
         }
         template <>
-        void fft_split_radix_dif_template<0>(Complex *input) {}
+        void fft_split_radix_dif_template<0>(Complex* input) {}
         template <>
-        void fft_split_radix_dif_template<1>(Complex *input) {}
+        void fft_split_radix_dif_template<1>(Complex* input) {}
         template <>
-        void fft_split_radix_dif_template<2>(Complex *input)
+        void fft_split_radix_dif_template<2>(Complex* input)
         {
             fft_2point(input[0], input[1]);
         }
         template <>
-        void fft_split_radix_dif_template<4>(Complex *input)
+        void fft_split_radix_dif_template<4>(Complex* input)
         {
             fft_dif_4point(input, 1);
         }
         template <>
-        void fft_split_radix_dif_template<8>(Complex *input)
+        void fft_split_radix_dif_template<8>(Complex* input)
         {
             fft_dif_8point(input, 1);
         }
         template <>
-        void fft_split_radix_dif_template<16>(Complex *input)
+        void fft_split_radix_dif_template<16>(Complex* input)
         {
 #ifdef FFT_R2_TEMPLATE
             fft_radix2_dif_template<16>(input);
@@ -1595,7 +1586,7 @@ namespace hint
 #endif
         }
         template <>
-        void fft_split_radix_dif_template<32>(Complex *input)
+        void fft_split_radix_dif_template<32>(Complex* input)
         {
 #ifdef FFT_R2_TEMPLATE
             fft_radix2_dif_template<32>(input);
@@ -1605,7 +1596,7 @@ namespace hint
         }
 
         template <size_t LEN = 1>
-        void fft_dit_template(Complex *input, size_t fft_len, bool bit_inv = true)
+        void fft_dit_template(Complex* input, size_t fft_len, bool bit_inv = true)
         {
             if (fft_len > LEN)
             {
@@ -1620,10 +1611,10 @@ namespace hint
             fft_split_radix_dit_template<LEN>(input);
         }
         template <>
-        void fft_dit_template<1 << 24>(Complex *input, size_t fft_len, bool bit_inv) {}
+        void fft_dit_template<1 << 24>(Complex* input, size_t fft_len, bool bit_inv) {}
 
         template <size_t LEN = 1>
-        void fft_dif_template(Complex *input, size_t fft_len, bool bit_inv = true)
+        void fft_dif_template(Complex* input, size_t fft_len, bool bit_inv = true)
         {
             if (fft_len > LEN)
             {
@@ -1638,13 +1629,13 @@ namespace hint
             }
         }
         template <>
-        void fft_dif_template<1 << 24>(Complex *input, size_t fft_len, bool is_ifft) {}
+        void fft_dif_template<1 << 24>(Complex* input, size_t fft_len, bool is_ifft) {}
 
         /// @brief 时间抽取基2fft
         /// @param input 复数组
         /// @param fft_len 数组长度
         /// @param bit_inv 是否逆序
-        inline void fft_dit(Complex *input, size_t fft_len, bool bit_inv = true)
+        inline void fft_dit(Complex* input, size_t fft_len, bool bit_inv = true)
         {
             fft_len = max_2pow(fft_len);
             fft_dit_template<1>(input, fft_len, bit_inv);
@@ -1654,7 +1645,7 @@ namespace hint
         /// @param input 复数组
         /// @param fft_len 数组长度
         /// @param bit_inv 是否逆序
-        inline void fft_dif(Complex *input, size_t fft_len, bool bit_inv = true)
+        inline void fft_dif(Complex* input, size_t fft_len, bool bit_inv = true)
         {
             fft_len = max_2pow(fft_len);
             fft_dif_template<1>(input, fft_len, bit_inv);
@@ -1663,7 +1654,7 @@ namespace hint
         /// @param input 复数组
         /// @param fft_len 变换长度
         /// @param r4_bit_inv 基4是否进行比特逆序,与逆变换同时设为false可以提高性能
-        inline void fft(Complex *input, size_t fft_len, const bool bit_inv = true)
+        inline void fft(Complex* input, size_t fft_len, const bool bit_inv = true)
         {
             size_t log_len = hint_log2(fft_len);
             fft_len = 1ull << log_len;
@@ -1677,7 +1668,7 @@ namespace hint
         /// @param input 复数组
         /// @param fft_len 变换长度
         /// @param r4_bit_inv 基4是否进行比特逆序,与逆变换同时设为false可以提高性能
-        inline void ifft(Complex *input, size_t fft_len, const bool bit_inv = true)
+        inline void ifft(Complex* input, size_t fft_len, const bool bit_inv = true)
         {
             size_t log_len = hint_log2(fft_len);
             fft_len = 1ull << log_len;
@@ -1695,7 +1686,7 @@ namespace hint
         /// @param input 浮点数组指针
         /// @param fht_len 变换的长度
         /// @param is_ifht 是否为逆变换
-        void fht(double *input, size_t fht_len)
+        void fht(double* input, size_t fht_len)
         {
             fht_len = max_2pow(fht_len);
             if (fht_len <= 1)
@@ -1754,7 +1745,7 @@ namespace hint
                 shift++;
             }
         }
-        void ifht(double *input, size_t fht_len)
+        void ifht(double* input, size_t fht_len)
         {
             fht_len = max_2pow(fht_len);
             fht(input, fht_len);
@@ -1789,7 +1780,7 @@ namespace hint
         }
         // 归一化,逆变换用
         template <UINT_64 MOD>
-        inline void ntt_normalize(UINT_32 *input, size_t ntt_len)
+        inline void ntt_normalize(UINT_32* input, size_t ntt_len)
         {
             const UINT_64 inv = mod_inv(ntt_len, MOD);
             size_t mod4 = ntt_len % 4;
@@ -1808,7 +1799,7 @@ namespace hint
         }
         // 基2时间抽取ntt蝶形
         template <UINT_64 MOD>
-        constexpr void ntt_radix2_dit_butterfly(UINT_64 omega, UINT_32 *input, size_t pos, size_t rank)
+        constexpr void ntt_radix2_dit_butterfly(UINT_64 omega, UINT_32* input, size_t pos, size_t rank)
         {
             UINT_32 tmp1 = input[pos];
             UINT_32 tmp2 = input[pos + rank] * omega % MOD;
@@ -1817,7 +1808,7 @@ namespace hint
         }
         // 基2频率抽取ntt蝶形
         template <UINT_64 MOD>
-        constexpr void ntt_radix2_dif_butterfly(UINT_64 omega, UINT_32 *input, size_t pos, size_t rank)
+        constexpr void ntt_radix2_dif_butterfly(UINT_64 omega, UINT_32* input, size_t pos, size_t rank)
         {
             UINT_32 tmp1 = input[pos];
             UINT_32 tmp2 = input[pos + rank];
@@ -1827,7 +1818,7 @@ namespace hint
         // ntt基4时间抽取蝶形变换
         template <UINT_64 MOD = 2281701377>
         constexpr void ntt_radix4_dit_butterfly(UINT_64 omega, UINT_64 omega_sqr, UINT_64 omega_cube,
-                                                UINT_64 quarter, UINT_32 *input, size_t pos, size_t rank)
+            UINT_64 quarter, UINT_32* input, size_t pos, size_t rank)
         {
             UINT_32 tmp1 = input[pos];
             UINT_32 tmp2 = input[pos + rank] * omega % MOD;
@@ -1847,7 +1838,7 @@ namespace hint
         // ntt基4频率抽取蝶形变换
         template <UINT_64 MOD = 2281701377>
         constexpr void ntt_radix4_dif_butterfly(UINT_64 omega, UINT_64 omega_sqr, UINT_64 omega_cube,
-                                                UINT_64 quarter, UINT_32 *input, size_t pos, size_t rank)
+            UINT_64 quarter, UINT_32* input, size_t pos, size_t rank)
         {
             UINT_32 tmp1 = input[pos];
             UINT_32 tmp2 = input[pos + rank];
@@ -1866,7 +1857,7 @@ namespace hint
         }
         // 2点NTT
         template <UINT_64 MOD>
-        constexpr void ntt_2point(UINT_32 &sum, UINT_32 &diff)
+        constexpr void ntt_2point(UINT_32& sum, UINT_32& diff)
         {
             UINT_32 tmp1 = sum;
             UINT_32 tmp2 = diff;
@@ -1875,7 +1866,7 @@ namespace hint
         }
         // 4点NTT
         template <UINT_64 MOD>
-        constexpr void ntt_4point(UINT_32 *input, UINT_64 quarter, size_t pos, size_t rank)
+        constexpr void ntt_4point(UINT_32* input, UINT_64 quarter, size_t pos, size_t rank)
         {
             UINT_32 tmp1 = input[pos];
             UINT_32 tmp2 = input[pos + rank];
@@ -1894,7 +1885,7 @@ namespace hint
         }
         // 基2时间抽取ntt
         template <UINT_64 MOD = 2281701377, UINT_64 G_ROOT = 3>
-        void ntt_radix2_dit(UINT_32 *input, size_t ntt_len, bool bit_inv = true)
+        void ntt_radix2_dit(UINT_32* input, size_t ntt_len, bool bit_inv = true)
         {
             ntt_len = max_2pow(ntt_len);
             if (ntt_len <= 1)
@@ -1941,7 +1932,7 @@ namespace hint
         }
         // 基2频率抽取ntt
         template <UINT_64 MOD = 2281701377, UINT_64 G_ROOT = 3>
-        void ntt_radix2_dif(UINT_32 *input, size_t ntt_len, bool bit_inv = true)
+        void ntt_radix2_dif(UINT_32* input, size_t ntt_len, bool bit_inv = true)
         {
             ntt_len = max_2pow(ntt_len);
             if (ntt_len <= 1)
@@ -1989,7 +1980,7 @@ namespace hint
         }
         // 基4时间抽取ntt
         template <UINT_64 MOD = 2281701377, UINT_64 G_ROOT = 3>
-        void ntt_radix4_dit(UINT_32 *input, size_t ntt_len, const bool bit_inv = true)
+        void ntt_radix4_dit(UINT_32* input, size_t ntt_len, const bool bit_inv = true)
         {
             size_t log4_len = hint_log2(ntt_len) / 2;
             ntt_len = 1ull << (log4_len * 2);
@@ -2026,7 +2017,7 @@ namespace hint
         }
         // 基4频率抽取ntt
         template <UINT_64 MOD = 2281701377, UINT_64 G_ROOT = 3>
-        void ntt_radix4_dif(UINT_32 *input, size_t ntt_len, const bool bit_inv = true)
+        void ntt_radix4_dif(UINT_32* input, size_t ntt_len, const bool bit_inv = true)
         {
             size_t log4_len = hint_log2(ntt_len) / 2;
             ntt_len = 1ull << (log4_len * 2);
@@ -2069,7 +2060,7 @@ namespace hint
             }
         }
         template <UINT_64 MOD = 2281701377, UINT_64 G_ROOT = 3>
-        void ntt_dif(UINT_32 *input, size_t ntt_len, const bool bit_inv = true)
+        void ntt_dif(UINT_32* input, size_t ntt_len, const bool bit_inv = true)
         {
             ntt_len = max_2pow(ntt_len);
             if (ntt_len <= 1)
@@ -2087,7 +2078,7 @@ namespace hint
             }
         }
         template <UINT_64 MOD = 2281701377, UINT_64 G_ROOT = 3>
-        void ntt_dit(UINT_32 *input, size_t ntt_len, const bool bit_inv = true)
+        void ntt_dit(UINT_32* input, size_t ntt_len, const bool bit_inv = true)
         {
             ntt_len = max_2pow(ntt_len);
             if (ntt_len <= 1)
@@ -2106,7 +2097,7 @@ namespace hint
         }
         // 双线程NTT
         template <UINT_64 MOD = 2281701377, UINT_64 G_ROOT = 3>
-        void ntt_dual(UINT_32 *input, size_t ntt_len)
+        void ntt_dual(UINT_32* input, size_t ntt_len)
         {
             //             auto merge_proc = [=](size_t start, size_t end, UINT_64 omega_start)
             //             {
@@ -2135,7 +2126,7 @@ namespace hint
         /// @param input 输入数组
         /// @param ntt_len 数组长度
         template <UINT_64 MOD = 2281701377, UINT_64 G_ROOT = 3>
-        void ntt(UINT_32 *input, size_t ntt_len)
+        void ntt(UINT_32* input, size_t ntt_len)
         {
             ntt_dif<MOD, G_ROOT>(input, ntt_len, false);
         }
@@ -2146,7 +2137,7 @@ namespace hint
         /// @param input 输入数组
         /// @param ntt_len 数组长度
         template <UINT_64 MOD = 2281701377, UINT_64 G_ROOT = 3>
-        void intt(UINT_32 *input, size_t ntt_len)
+        void intt(UINT_32* input, size_t ntt_len)
         {
             constexpr UINT_64 IG_ROOT = mod_inv(G_ROOT, MOD);
             ntt_dit<MOD, IG_ROOT>(input, ntt_len, false);
@@ -2182,7 +2173,7 @@ namespace hint
     }
     template <typename T>
     constexpr void normal_convolution(const T in1[], const T in2[], T out[],
-                                      size_t len1, size_t len2)
+        size_t len1, size_t len2)
     {
         ary_clr(out, len1 + len2 - 1);
         for (size_t i = 0; i < len1; i++)
@@ -2232,7 +2223,7 @@ namespace hint
         constexpr UINT_64 mod1 = NTT_MOD1, mod2 = NTT_MOD2;
         constexpr UINT_64 root1 = NTT_ROOT1, root2 = NTT_ROOT2;
 
-        UINT_32 *ntt_ary3 = nullptr, *ntt_ary4 = nullptr;
+        UINT_32* ntt_ary3 = nullptr, * ntt_ary4 = nullptr;
         if (ntt_ary1 == ntt_ary2)
         {
             ntt_ary3 = ntt_ary4 = new UINT_32[ntt_len];
@@ -2288,8 +2279,8 @@ namespace hint
         }
         return result;
     }
-    UINT_64 stoui64(const std::string::const_iterator &begin,
-                    const std::string::const_iterator &end, const UINT_32 base = 10)
+    UINT_64 stoui64(const std::string::const_iterator& begin,
+        const std::string::const_iterator& end, const UINT_32 base = 10)
     {
         UINT_64 result = 0;
         for (auto it = begin; it < end && it - begin < 19; ++it)
@@ -2315,7 +2306,7 @@ namespace hint
         }
         return result;
     }
-    UINT_64 stoui64(const std::string &str, const UINT_32 base = 10)
+    UINT_64 stoui64(const std::string& str, const UINT_32 base = 10)
     {
         return stoui64(str.begin(), str.end(), base);
     }
@@ -2324,7 +2315,7 @@ namespace hint
     class HintVector
     {
     private:
-        T *ary_ptr = nullptr;
+        T* ary_ptr = nullptr;
         SIZE_TYPE sign_n_len = 0;
         SIZE_TYPE size = 0;
 
@@ -2357,7 +2348,7 @@ namespace hint
                 fill_element(ele, ele_size);
             }
         }
-        HintVector(const T *ary, SIZE_TYPE len)
+        HintVector(const T* ary, SIZE_TYPE len)
         {
             if (ary == nullptr)
             {
@@ -2370,7 +2361,7 @@ namespace hint
                 ary_copy(ary_ptr, ary, len);
             }
         }
-        HintVector(const HintVector &input)
+        HintVector(const HintVector& input)
         {
             if (input.ary_ptr != nullptr)
             {
@@ -2386,7 +2377,7 @@ namespace hint
                 ary_copy(ary_ptr, input.ary_ptr, len);
             }
         }
-        HintVector(HintVector &&input)
+        HintVector(HintVector&& input)
         {
             if (input.ary_ptr != nullptr)
             {
@@ -2401,7 +2392,7 @@ namespace hint
                 input.ary_ptr = nullptr;
             }
         }
-        HintVector &operator=(const HintVector &input)
+        HintVector& operator=(const HintVector& input)
         {
             if (this != &input)
             {
@@ -2418,7 +2409,7 @@ namespace hint
             }
             return *this;
         }
-        HintVector &operator=(HintVector &&input)
+        HintVector& operator=(HintVector&& input)
         {
             if (this != &input)
             {
@@ -2435,7 +2426,7 @@ namespace hint
             return *this;
         }
         template <typename Ty, typename SIZE_Ty>
-        void copy_from(const HintVector<Ty, SIZE_Ty> &input)
+        void copy_from(const HintVector<Ty, SIZE_Ty>& input)
         {
             constexpr SIZE_TYPE SIZE_TYPE_BITS = sizeof(SIZE_TYPE) * 8;   // size和len成员的比特数
             constexpr SIZE_TYPE SIZE_80 = (1ull << (SIZE_TYPE_BITS - 1)); // 第一位为1，其余位为0
@@ -2457,7 +2448,7 @@ namespace hint
             }
         }
         template <typename Ty>
-        void copy_from(const Ty *input, SIZE_TYPE len)
+        void copy_from(const Ty* input, SIZE_TYPE len)
         {
             if (input == nullptr)
             {
@@ -2482,11 +2473,11 @@ namespace hint
             }
             return ary_ptr[length() - 1];
         }
-        T &operator[](SIZE_TYPE index) const
+        T& operator[](SIZE_TYPE index) const
         {
             return ary_ptr[index];
         }
-        void *raw_ptr() const
+        void* raw_ptr() const
         {
             if (ary_ptr == nullptr)
             {
@@ -2495,7 +2486,7 @@ namespace hint
             }
             return ary_ptr;
         }
-        T *type_ptr() const
+        T* type_ptr() const
         {
             return ary_ptr;
         }
