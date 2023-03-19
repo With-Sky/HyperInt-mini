@@ -2408,6 +2408,9 @@ namespace hint
         T *ary_ptr = nullptr;
         SIZE_TYPE sign_n_len = 0;
         SIZE_TYPE size = 0;
+        static constexpr SIZE_TYPE SIZE_TYPE_BITS = sizeof(SIZE_TYPE) * 8;   // size和len成员的比特数
+        static constexpr SIZE_TYPE SIZE_80 = (1ull << (SIZE_TYPE_BITS - 1)); // 第一位为1，其余位为0
+        static constexpr SIZE_TYPE LEN_MAX = SIZE_80 - 1;                    // 定义最大长度
 
     public:
         ~HintVector()
@@ -2518,9 +2521,6 @@ namespace hint
         template <typename Ty, typename SIZE_Ty>
         void copy_from(const HintVector<Ty, SIZE_Ty> &input)
         {
-            constexpr SIZE_TYPE SIZE_TYPE_BITS = sizeof(SIZE_TYPE) * 8;   // size和len成员的比特数
-            constexpr SIZE_TYPE SIZE_80 = (1ull << (SIZE_TYPE_BITS - 1)); // 第一位为1，其余位为0
-            constexpr SIZE_TYPE LEN_MAX = SIZE_80 - 1;                    // 定义最大长度
             if (this != &input)
             {
                 if (input.length() > LEN_MAX)
@@ -2582,9 +2582,6 @@ namespace hint
         }
         static SIZE_TYPE size_generator(SIZE_TYPE new_size)
         {
-            constexpr SIZE_TYPE SIZE_TYPE_BITS = sizeof(SIZE_TYPE) * 8;   // size和len成员的比特数
-            constexpr SIZE_TYPE SIZE_80 = (1ull << (SIZE_TYPE_BITS - 1)); // 第一位为1，其余位为0
-            constexpr SIZE_TYPE LEN_MAX = SIZE_80 - 1;                    // 定义最大长度
             new_size = std::min<SIZE_TYPE>(new_size, LEN_MAX);
             if (new_size <= 2)
             {
@@ -2626,15 +2623,11 @@ namespace hint
         }
         SIZE_TYPE length() const
         {
-            constexpr SIZE_TYPE SIZE_TYPE_BITS = sizeof(SIZE_TYPE) * 8;   // size和len成员的比特数
-            constexpr SIZE_TYPE SIZE_80 = (1ull << (SIZE_TYPE_BITS - 1)); // 第一位为1，其余位为0
-            constexpr SIZE_TYPE LEN_MAX = SIZE_80 - 1;                    // 定义最大长度
             return sign_n_len & LEN_MAX;
         }
         bool sign() const
         {
-            constexpr SIZE_TYPE SIZE_TYPE_BITS = sizeof(SIZE_TYPE) * 8;   // size和len成员的比特数
-            constexpr SIZE_TYPE SIZE_80 = (1ull << (SIZE_TYPE_BITS - 1)); // 第一位为1，其余位为0
+
             return (SIZE_80 & sign_n_len) != 0;
         }
         constexpr void resize(SIZE_TYPE new_size, SIZE_TYPE(size_func)(SIZE_TYPE) = size_generator)
@@ -2655,9 +2648,6 @@ namespace hint
         }
         void change_length(SIZE_TYPE new_length)
         {
-            constexpr SIZE_TYPE SIZE_TYPE_BITS = sizeof(SIZE_TYPE) * 8;   // size和len成员的比特数
-            constexpr SIZE_TYPE SIZE_80 = (1ull << (SIZE_TYPE_BITS - 1)); // 第一位为1，其余位为0
-            constexpr SIZE_TYPE LEN_MAX = SIZE_80 - 1;                    // 定义最大长度
             if (new_length > LEN_MAX)
             {
                 throw("Length too long\n");
@@ -2669,9 +2659,6 @@ namespace hint
         }
         void change_sign(bool is_sign)
         {
-            constexpr SIZE_TYPE SIZE_TYPE_BITS = sizeof(SIZE_TYPE) * 8;   // size和len成员的比特数
-            constexpr SIZE_TYPE SIZE_80 = (1ull << (SIZE_TYPE_BITS - 1)); // 第一位为1，其余位为0
-            constexpr SIZE_TYPE LEN_MAX = SIZE_80 - 1;                    // 定义最大长度
             if ((!is_sign) || length() == 0)
             {
                 sign_n_len = sign_n_len & LEN_MAX;
@@ -2712,5 +2699,11 @@ namespace hint
             ary_clr(ary_ptr, size);
         }
     };
+    template <typename T, typename SIZE_TYPE>
+    constexpr SIZE_TYPE HintVector<T,SIZE_TYPE>::SIZE_TYPE_BITS;
+    template <typename T, typename SIZE_TYPE>
+    constexpr SIZE_TYPE HintVector<T,SIZE_TYPE>::SIZE_80;
+    template <typename T, typename SIZE_TYPE>
+    constexpr SIZE_TYPE HintVector<T,SIZE_TYPE>::LEN_MAX;
 }
 #endif
