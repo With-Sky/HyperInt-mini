@@ -302,7 +302,7 @@ namespace hint_arithm
         T *res = out;
         if (in1 == out || in2 == out)
         {
-            res = new T[len1 + len2]();
+            res = new T[len1 + len2]{};
         }
         for (size_t i = 0; i < len1; i++)
         {
@@ -364,7 +364,7 @@ namespace hint_arithm
         }
         size_t conv_res_len = len * 2 - 1;       // 卷积结果长度
         size_t fht_len = min_2pow(conv_res_len); // fht长度
-        double *fht_ary = new double[fht_len * 2]();
+        double *fht_ary = new double[fht_len * 2]{};
         ary_copy_2type(fht_ary, in, len);
         fht_convolution(fht_ary, fht_ary, fht_ary + fht_len, fht_len);
         hint::UINT_64 carry = 0;
@@ -387,7 +387,7 @@ namespace hint_arithm
         }
         size_t conv_res_len = len1 + len2 - 1;   // 卷积结果长度
         size_t ntt_len = min_2pow(conv_res_len); // ntt长度
-        UINT_32 *ntt_ary1 = new UINT_32[ntt_len * 4]();
+        UINT_32 *ntt_ary1 = new UINT_32[ntt_len * 4]{};
         UINT_32 *ntt_ary2 = ntt_ary1 + ntt_len;
         UINT_32 *ntt_ary3 = ntt_ary1 + ntt_len * 2;
         UINT_32 *ntt_ary4 = ntt_ary1 + ntt_len * 3;
@@ -427,7 +427,7 @@ namespace hint_arithm
         }
         size_t conv_res_len = len * 2 - 1;       // 卷积结果长度
         size_t ntt_len = min_2pow(conv_res_len); // ntt长度
-        UINT_32 *ntt_ary1 = new UINT_32[ntt_len * 2]();
+        UINT_32 *ntt_ary1 = new UINT_32[ntt_len * 2]{};
         UINT_32 *ntt_ary2 = ntt_ary1 + ntt_len;
         hint::ary_copy_2type(ntt_ary1, in, len);
         hint::ary_copy(ntt_ary2, ntt_ary1, len);
@@ -909,14 +909,14 @@ namespace hint_arithm
             ary_copy(in_ntt, in, rank);
             ary_clr(in_ntt + rank, rank);
             ary_clr(out + rank / 2, gap - rank / 2);
-            hint_transform::ntt_radix2_dif<MOD, G_ROOT>(in_ntt, gap, true);
-            hint_transform::ntt_radix2_dif<MOD, G_ROOT>(out, gap, true);
+            hint_transform::ntt_dif<MOD, G_ROOT>(in_ntt, gap, false);
+            hint_transform::ntt_dif<MOD, G_ROOT>(out, gap, false);
             for (size_t i = 0; i < gap; i++)
             {
                 UINT_64 a = in_ntt[i], b = out[i];
                 out[i] = (b * 2 + MOD - (b * b % MOD) * a % MOD) % MOD;
             }
-            hint_transform::ntt_radix2_dit<MOD, IG_ROOT>(out, gap, true);
+            hint_transform::ntt_dit<MOD, IG_ROOT>(out, gap, false);
             UINT_64 inv = mod_inv(gap, MOD);
             for (size_t i = 0; i < gap / 2; i++)
             {
@@ -979,7 +979,7 @@ namespace hint_arithm
             }
         }
         size_t unit_ary_len = max_rank * base1to2_len; // unit_ary的长度max_rank
-        T *unit_ary = new T[unit_ary_len]();           // 用一个数组存储base2进制下的(base1)^1,(base1)^2,(base1)^4...
+        T *unit_ary = new T[unit_ary_len]{};           // 用一个数组存储base2进制下的(base1)^1,(base1)^2,(base1)^4...
         UINT_64 tmp = BASE1;
         size_t i = 0;
         while (tmp > 0)
