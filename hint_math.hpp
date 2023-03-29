@@ -1,5 +1,3 @@
-#include <algorithm>
-#include <atomic>
 #include <complex>
 #include <future>
 #include <iostream>
@@ -16,10 +14,9 @@
 
 #ifndef HINT_MATH_HPP
 #define HINT_MATH_HPP
-#define MULTITHREAD 0     // 0 means no, 1 means yes
-#define TABLE_TYPE 1      // 0 means ComplexTable, 1 means ComplexTableX,2 means ComplexTableZ
-#define TABLE_PRELOAD 1   // 0 means no, 1 means yes
-#define FFT_R2_TEMPLATE 0 // 0 means no, 1 means yes
+#define MULTITHREAD 0   // 0 means no, 1 means yes
+#define TABLE_TYPE 1    // 0 means ComplexTable, 1 means ComplexTableX,2 means ComplexTableZ
+#define TABLE_PRELOAD 1 // 0 means no, 1 means yes
 
 namespace hint
 {
@@ -881,14 +878,14 @@ namespace hint
         }
         inline void fft_dit_16point(Complex *input, size_t rank = 1)
         {
-            fft_dit_8point(input, rank);
-            fft_dit_8point(input + rank * 8, rank);
-
             static constexpr double cos_1_8 = 0.70710678118654752440084436210485;
             static constexpr double cos_1_16 = 0.92387953251128675612818318939679;
             static constexpr double sin_1_16 = 0.3826834323650897717284599840304;
             static constexpr Complex w1(cos_1_16, -sin_1_16), w3(sin_1_16, -cos_1_16);
             static constexpr Complex w5(-sin_1_16, -cos_1_16), w7(-cos_1_16, -sin_1_16);
+
+            fft_dit_8point(input, rank);
+            fft_dit_8point(input + rank * 8, rank);
 
             Complex tmp0 = input[0];
             Complex tmp1 = input[rank];
@@ -931,9 +928,6 @@ namespace hint
         }
         inline void fft_dit_32point(Complex *input, size_t rank = 1)
         {
-            fft_dit_16point(input, rank);
-            fft_dit_16point(input + rank * 16, rank);
-
             static constexpr double cos_1_8 = 0.70710678118654752440084436210485;
             static constexpr double cos_1_16 = 0.92387953251128675612818318939679;
             static constexpr double sin_1_16 = 0.3826834323650897717284599840304;
@@ -945,6 +939,9 @@ namespace hint
             static constexpr Complex w5(sin_3_32, -cos_3_32), w6(sin_1_16, -cos_1_16), w7(sin_1_32, -cos_1_32);
             static constexpr Complex w9(-sin_1_32, -cos_1_32), w10(-sin_1_16, -cos_1_16), w11(-sin_3_32, -cos_3_32);
             static constexpr Complex w13(-cos_3_32, -sin_3_32), w14(-cos_1_16, -sin_1_16), w15(-cos_1_32, -sin_1_32);
+
+            fft_dit_16point(input, rank);
+            fft_dit_16point(input + rank * 16, rank);
 
             Complex tmp0 = input[0];
             Complex tmp1 = input[rank];
@@ -1269,12 +1266,12 @@ namespace hint
 
             fft_2point(tmp0, tmp2);
             fft_2point(tmp1, tmp3);
-            tmp3 = Complex(tmp3.imag(), -tmp3.real());
+            tmp3 = Complex(-tmp3.imag(), tmp3.real());
 
             input[0] = tmp0;
             input[rank] = tmp1;
-            input[rank * 2] = (tmp2 + tmp3) * omega;
-            input[rank * 3] = (tmp2 - tmp3) * omega_cube;
+            input[rank * 2] = (tmp2 - tmp3) * omega;
+            input[rank * 3] = (tmp2 + tmp3) * omega_cube;
         }
         // fft基4时间抽取蝶形变换
         inline void fft_radix4_dit_butterfly(Complex omega, Complex omega_sqr, Complex omega_cube,
@@ -1475,104 +1472,6 @@ namespace hint
                 binary_inverse_swap(input, fft_len);
             }
         }
-#if FFT_R2_TEMPLATE == 1
-        // FFT最外层循环模板展开
-        template <size_t RANK, size_t LEN>
-        struct FFT_LOOP1
-        {
-            static constexpr size_t gap = RANK * 2;
-            static constexpr size_t log_len = hint_log2(gap);
-            static void fft_dit_loop1(Complex *input)
-            {
-                FFT_LOOP1<RANK / 2, LEN>::fft_dit_loop1(input);
-                for (size_t begin = 0; begin < LEN; begin += (gap * 2))
-                {
-                    fft_2point(input[begin], input[begin + RANK]);
-                    fft_2point(input[gap + begin], input[gap + begin + RANK]);
-                    for (size_t pos = begin + 1; pos < begin + RANK; pos++)
-                    {
-                        Complex omega = TABLE.get_complex_conj(log_len, pos - begin);
-
-                        fft_radix2_dit_butterfly(omega, input + pos, RANK);
-                        fft_radix2_dit_butterfly(omega, input + pos + gap, RANK);
-                    }
-                }
-            }
-            static void fft_dif_loop1(Complex *input)
-            {
-                for (size_t begin = 0; begin < LEN; begin += (gap * 2))
-                {
-                    fft_2point(input[begin], input[begin + RANK]);
-                    fft_2point(input[gap + begin], input[gap + begin + RANK]);
-                    for (size_t pos = begin + 1; pos < begin + RANK; pos++)
-                    {
-                        Complex omega = TABLE.get_complex_conj(log_len, pos - begin);
-                        fft_radix2_dif_butterfly(omega, input + pos, RANK);
-                        fft_radix2_dif_butterfly(omega, input + pos + gap, RANK);
-                    }
-                }
-                FFT_LOOP1<RANK / 2, LEN>::fft_dif_loop1(input);
-            }
-        };
-        template <size_t LEN>
-        struct FFT_LOOP1<1, LEN>
-        {
-        public:
-            static void fft_dit_loop1(Complex *input) {}
-            static void fft_dif_loop1(Complex *input) {}
-        };
-
-        // 模板化时间抽取基2FFT
-        template <size_t LEN>
-        void fft_radix2_dit_template(Complex *input)
-        {
-            for (size_t i = 0; i < LEN; i += 2)
-            {
-                fft_2point(input[i], input[i + 1]);
-            }
-            FFT_LOOP1<LEN / 4, LEN>::fft_dit_loop1(input);
-            constexpr INT_32 log_len = hint_log2(LEN);
-            for (size_t pos = 0; pos < LEN / 2; pos++)
-            {
-                Complex omega = TABLE.get_complex_conj(log_len, pos);
-                fft_radix2_dit_butterfly(omega, input + pos, LEN / 2);
-            }
-        }
-        template <>
-        void fft_radix2_dit_template<0>(Complex *input) {}
-        template <>
-        void fft_radix2_dit_template<1>(Complex *input) {}
-        template <>
-        void fft_radix2_dit_template<2>(Complex *input)
-        {
-            fft_2point(input[0], input[1]);
-        }
-        template <size_t LEN>
-        // 模板化频率抽取基2FFT
-        void fft_radix2_dif_template(Complex *input)
-        {
-            constexpr INT_32 log_len = hint_log2(LEN);
-            for (size_t pos = 0; pos < LEN / 2; pos++)
-            {
-                Complex omega = TABLE.get_complex_conj(log_len, pos);
-                fft_radix2_dif_butterfly(omega, input + pos, LEN / 2);
-            }
-            FFT_LOOP1<LEN / 4, LEN>::fft_dif_loop1(input);
-            for (size_t i = 0; i < LEN; i += 2)
-            {
-                fft_2point(input[i], input[i + 1]);
-            }
-        }
-        template <>
-        void fft_radix2_dif_template<0>(Complex *input) {}
-        template <>
-        void fft_radix2_dif_template<1>(Complex *input) {}
-        template <>
-        void fft_radix2_dif_template<2>(Complex *input)
-        {
-            fft_2point(input[0], input[1]);
-        }
-#endif
         // 模板化时间抽取分裂基fft
         template <size_t LEN>
         void fft_split_radix_dit_template(Complex *input)
@@ -1611,20 +1510,12 @@ namespace hint
         template <>
         void fft_split_radix_dit_template<16>(Complex *input)
         {
-#if FFT_R2_TEMPLATE == 1
-            fft_radix2_dit_template<16>(input);
-#else
             fft_dit_16point(input, 1);
-#endif
         }
         template <>
         void fft_split_radix_dit_template<32>(Complex *input)
         {
-#if FFT_R2_TEMPLATE == 1
-            fft_radix2_dit_template<32>(input);
-#else
             fft_dit_32point(input, 1);
-#endif
         }
 
         // 模板化频率抽取分裂基fft
@@ -1665,20 +1556,12 @@ namespace hint
         template <>
         void fft_split_radix_dif_template<16>(Complex *input)
         {
-#if FFT_R2_TEMPLATE == 1
-            fft_radix2_dif_template<16>(input);
-#else
             fft_dif_16point(input, 1);
-#endif
         }
         template <>
         void fft_split_radix_dif_template<32>(Complex *input)
         {
-#if FFT_R2_TEMPLATE == 1
-            fft_radix2_dif_template<32>(input);
-#else
             fft_dif_32point(input, 1);
-#endif
         }
 
         template <size_t LEN = 1>
@@ -1767,7 +1650,82 @@ namespace hint
             fft_dit(input, fft_len, bit_inv);
             fft_conj(input, fft_len, fft_len);
         }
-
+        void fft_dit_2ths(Complex *input, size_t fft_len)
+        {
+            const size_t half_len = fft_len / 2;
+            const INT_32 log_len = hint_log2(fft_len);
+            auto th = std::async(fft_dit, input, half_len, false);
+            fft_dit(input + half_len, half_len, false);
+            th.wait();
+            auto proc = [&](size_t start, size_t end)
+            {
+                for (size_t i = start; i < end; i++)
+                {
+                    Complex omega = TABLE.get_complex_conj(log_len, i);
+                    fft_radix2_dit_butterfly(omega, input + i, half_len);
+                }
+            };
+            th = std::async(proc, 0, half_len / 2);
+            proc(half_len / 2, half_len);
+            th.wait();
+        }
+        void fft_dif_2ths(Complex *input, size_t fft_len)
+        {
+            const size_t half_len = fft_len / 2;
+            const INT_32 log_len = hint_log2(fft_len);
+            auto proc = [&](size_t start, size_t end)
+            {
+                for (size_t i = start; i < end; i++)
+                {
+                    Complex omega = TABLE.get_complex_conj(log_len, i);
+                    fft_radix2_dif_butterfly(omega, input + i, half_len);
+                }
+            };
+            auto th = std::async(proc, 0, half_len / 2);
+            proc(half_len / 2, half_len);
+            th.wait();
+            th = std::async(fft_dif, input, half_len, false);
+            fft_dif(input + half_len, half_len, false);
+            th.wait();
+        }
+        void fft_dit_4ths(Complex *input, size_t fft_len)
+        {
+            const size_t half_len = fft_len / 2;
+            const INT_32 log_len = hint_log2(fft_len);
+            auto th = std::async(fft_dit_2ths, input, half_len);
+            fft_dit_2ths(input + half_len, half_len);
+            th.wait();
+            auto proc = [&](size_t start, size_t end)
+            {
+                for (size_t i = start; i < end; i++)
+                {
+                    Complex omega = TABLE.get_complex_conj(log_len, i);
+                    fft_radix2_dit_butterfly(omega, input + i, half_len);
+                }
+            };
+            th = std::async(proc, 0, half_len / 2);
+            proc(half_len / 2, half_len);
+            th.wait();
+        }
+        void fft_dif_4ths(Complex *input, size_t fft_len)
+        {
+            const size_t half_len = fft_len / 2;
+            const INT_32 log_len = hint_log2(fft_len);
+            auto proc = [&](size_t start, size_t end)
+            {
+                for (size_t i = start; i < end; i++)
+                {
+                    Complex omega = TABLE.get_complex_conj(log_len, i);
+                    fft_radix2_dif_butterfly(omega, input + i, half_len);
+                }
+            };
+            auto th = std::async(proc, 0, half_len / 2);
+            proc(half_len / 2, half_len);
+            th.wait();
+            th = std::async(fft_dif_2ths, input, half_len);
+            fft_dif_2ths(input + half_len, half_len);
+            th.wait();
+        }
         /// @brief 快速哈特莱变换
         /// @param input 浮点数组指针
         /// @param fht_len 变换的长度
