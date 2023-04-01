@@ -93,7 +93,7 @@ namespace hint
         return res;
     }
     template <typename T>
-    constexpr size_t hint_log2(T n)
+    constexpr T hint_log2(T n)
     {
         T res = 0;
         while (n > 1)
@@ -651,7 +651,7 @@ namespace hint
                 for (INT_32 i = cur_log_size + 1; i <= shift; i++)
                 {
                     size_t len = 1ull << i, vec_size = len * FAC / 4;
-                    table[i] = std::vector<Complex>(vec_size);
+                    table[i].resize(vec_size);
                     for (size_t pos = 0; pos < len / 4; pos++)
                     {
                         Complex tmp = std::conj(unit_root(len, pos));
@@ -758,6 +758,8 @@ namespace hint
         static ComplexTableX TABLE(lut_max_rank);
 #elif TABLE_TYPE == 2
         static ComplexTableZ TABLE(lut_max_rank);
+#else
+#error TABLE_TYPE must be 0,1,2
 #endif
         // 二进制逆序
         template <typename T>
@@ -1692,9 +1694,10 @@ namespace hint
         {
             const size_t half_len = fft_len / 2;
             const INT_32 log_len = hint_log2(fft_len);
-            auto th = std::async(fft_dit_2ths, input, half_len);
+            auto th1 = std::async(fft_dit_2ths, input, half_len);
             fft_dit_2ths(input + half_len, half_len);
-            th.wait();
+            th1.wait();
+
             auto proc = [&](size_t start, size_t end)
             {
                 for (size_t i = start; i < end; i++)
@@ -1703,9 +1706,14 @@ namespace hint
                     fft_radix2_dit_butterfly(omega, input + i, half_len);
                 }
             };
-            th = std::async(proc, 0, half_len / 2);
-            proc(half_len / 2, half_len);
-            th.wait();
+            const size_t sub_len = fft_len / 8;
+            th1 = std::async(proc, 0, sub_len);
+            auto th2 = std::async(proc, sub_len, sub_len * 2);
+            auto th3 = std::async(proc, sub_len * 2, sub_len * 3);
+            proc(sub_len * 3, sub_len * 4);
+            th1.wait();
+            th2.wait();
+            th3.wait();
         }
         void fft_dif_4ths(Complex *input, size_t fft_len)
         {
@@ -1719,12 +1727,18 @@ namespace hint
                     fft_radix2_dif_butterfly(omega, input + i, half_len);
                 }
             };
-            auto th = std::async(proc, 0, half_len / 2);
-            proc(half_len / 2, half_len);
-            th.wait();
-            th = std::async(fft_dif_2ths, input, half_len);
+            const size_t sub_len = fft_len / 8;
+            auto th1 = std::async(proc, 0, sub_len);
+            auto th2 = std::async(proc, sub_len, sub_len * 2);
+            auto th3 = std::async(proc, sub_len * 2, sub_len * 3);
+            proc(sub_len * 3, sub_len * 4);
+            th1.wait();
+            th2.wait();
+            th3.wait();
+
+            th1 = std::async(fft_dif_2ths, input, half_len);
             fft_dif_2ths(input + half_len, half_len);
-            th.wait();
+            th1.wait();
         }
         /// @brief 快速哈特莱变换
         /// @param input 浮点数组指针
@@ -1860,11 +1874,11 @@ namespace hint
         {
             using ModInt32 = ModInt<MOD, UINT_32>;
             template <typename T>
-            using ModInt = ModInt<MOD, T>;
+            using ModIntTy = ModInt<MOD, T>;
             template <typename T>
-            static constexpr void ntt_normalize(ModInt<T> *input, size_t ntt_len)
+            static constexpr void ntt_normalize(ModIntTy<T> *input, size_t ntt_len)
             {
-                const ModInt<T> inv = ModInt<T>(ntt_len).inv();
+                const ModIntTy<T> inv = ModIntTy<T>(ntt_len).inv();
                 size_t mod4 = ntt_len % 4;
                 ntt_len -= mod4;
                 for (size_t i = 0; i < ntt_len; i += 4)
@@ -1881,21 +1895,21 @@ namespace hint
             }
             // 2点NTT
             template <typename T>
-            static constexpr void ntt_2point(ModInt<T> &sum, ModInt<T> &diff)
+            static constexpr void ntt_2point(ModIntTy<T> &sum, ModIntTy<T> &diff)
             {
-                ModInt<T> tmp1 = sum;
-                ModInt<T> tmp2 = diff;
+                ModIntTy<T> tmp1 = sum;
+                ModIntTy<T> tmp2 = diff;
                 sum = tmp1 + tmp2;
                 diff = tmp1 - tmp2;
             }
             template <typename T>
-            static constexpr void ntt_dit_4point(ModInt<T> *input, size_t rank = 1)
+            static constexpr void ntt_dit_4point(ModIntTy<T> *input, size_t rank = 1)
             {
-                constexpr ModInt<T> W_4_1 = ModInt<T>(G_ROOT).power((MOD - 1) / 4); // 等价于复数i
-                ModInt<T> tmp0 = input[0];
-                ModInt<T> tmp1 = input[rank];
-                ModInt<T> tmp2 = input[rank * 2];
-                ModInt<T> tmp3 = input[rank * 3];
+                constexpr ModIntTy<T> W_4_1 = ModIntTy<T>(G_ROOT).power((MOD - 1) / 4); // 等价于复数i
+                ModIntTy<T> tmp0 = input[0];
+                ModIntTy<T> tmp1 = input[rank];
+                ModIntTy<T> tmp2 = input[rank * 2];
+                ModIntTy<T> tmp3 = input[rank * 3];
 
                 ntt_2point(tmp0, tmp1);
                 ntt_2point(tmp2, tmp3);
@@ -1907,19 +1921,19 @@ namespace hint
                 input[rank * 3] = tmp1 - tmp3;
             }
             template <typename T>
-            static constexpr void ntt_dit_8point(ModInt<T> *input, size_t rank = 1)
+            static constexpr void ntt_dit_8point(ModIntTy<T> *input, size_t rank = 1)
             {
-                constexpr ModInt<T> W_8_1 = ModInt<T>(G_ROOT).power((MOD - 1) / 8);
-                constexpr ModInt<T> W_8_2 = W_8_1.power(2);
-                constexpr ModInt<T> W_8_3 = W_8_1.power(3);
-                ModInt<T> tmp0 = input[0];
-                ModInt<T> tmp1 = input[rank];
-                ModInt<T> tmp2 = input[rank * 2];
-                ModInt<T> tmp3 = input[rank * 3];
-                ModInt<T> tmp4 = input[rank * 4];
-                ModInt<T> tmp5 = input[rank * 5];
-                ModInt<T> tmp6 = input[rank * 6];
-                ModInt<T> tmp7 = input[rank * 7];
+                constexpr ModIntTy<T> W_8_1 = ModIntTy<T>(G_ROOT).power((MOD - 1) / 8);
+                constexpr ModIntTy<T> W_8_2 = W_8_1.power(2);
+                constexpr ModIntTy<T> W_8_3 = W_8_1.power(3);
+                ModIntTy<T> tmp0 = input[0];
+                ModIntTy<T> tmp1 = input[rank];
+                ModIntTy<T> tmp2 = input[rank * 2];
+                ModIntTy<T> tmp3 = input[rank * 3];
+                ModIntTy<T> tmp4 = input[rank * 4];
+                ModIntTy<T> tmp5 = input[rank * 5];
+                ModIntTy<T> tmp6 = input[rank * 6];
+                ModIntTy<T> tmp7 = input[rank * 7];
                 ntt_2point(tmp0, tmp1);
                 ntt_2point(tmp2, tmp3);
                 ntt_2point(tmp4, tmp5);
@@ -1945,23 +1959,23 @@ namespace hint
                 input[rank * 7] = tmp3 - tmp7;
             }
             template <typename T>
-            static constexpr void ntt_dit_16point(ModInt<T> *input, size_t rank = 1)
+            static constexpr void ntt_dit_16point(ModIntTy<T> *input, size_t rank = 1)
             {
-                constexpr ModInt<T> W_16_1 = ModInt<T>(G_ROOT).power((MOD - 1) / 16);
-                constexpr ModInt<T> W_16_2 = W_16_1.power(2);
-                constexpr ModInt<T> W_16_3 = W_16_1.power(3);
-                constexpr ModInt<T> W_16_4 = W_16_1.power(4);
-                constexpr ModInt<T> W_16_5 = W_16_1.power(5);
-                constexpr ModInt<T> W_16_6 = W_16_1.power(6);
-                constexpr ModInt<T> W_16_7 = W_16_1.power(7);
+                constexpr ModIntTy<T> W_16_1 = ModIntTy<T>(G_ROOT).power((MOD - 1) / 16);
+                constexpr ModIntTy<T> W_16_2 = W_16_1.power(2);
+                constexpr ModIntTy<T> W_16_3 = W_16_1.power(3);
+                constexpr ModIntTy<T> W_16_4 = W_16_1.power(4);
+                constexpr ModIntTy<T> W_16_5 = W_16_1.power(5);
+                constexpr ModIntTy<T> W_16_6 = W_16_1.power(6);
+                constexpr ModIntTy<T> W_16_7 = W_16_1.power(7);
 
                 ntt_dit_8point(input, rank);
                 ntt_dit_8point(input + rank * 8, rank);
 
-                ModInt<T> tmp0 = input[0];
-                ModInt<T> tmp1 = input[rank];
-                ModInt<T> tmp2 = input[rank * 8];
-                ModInt<T> tmp3 = input[rank * 9] * W_16_1;
+                ModIntTy<T> tmp0 = input[0];
+                ModIntTy<T> tmp1 = input[rank];
+                ModIntTy<T> tmp2 = input[rank * 8];
+                ModIntTy<T> tmp3 = input[rank * 9] * W_16_1;
                 input[0] = tmp0 + tmp2;
                 input[rank] = tmp1 + tmp3;
                 input[rank * 8] = tmp0 - tmp2;
@@ -1995,13 +2009,13 @@ namespace hint
                 input[rank * 15] = tmp1 - tmp3;
             }
             template <typename T>
-            static constexpr void ntt_dif_4point(ModInt<T> *input, size_t rank = 1)
+            static constexpr void ntt_dif_4point(ModIntTy<T> *input, size_t rank = 1)
             {
-                constexpr ModInt<T> W_4_1 = ModInt<T>(G_ROOT).power((MOD - 1) / 4); // 等价于复数i
-                ModInt<T> tmp0 = input[0];
-                ModInt<T> tmp1 = input[rank];
-                ModInt<T> tmp2 = input[rank * 2];
-                ModInt<T> tmp3 = input[rank * 3];
+                constexpr ModIntTy<T> W_4_1 = ModIntTy<T>(G_ROOT).power((MOD - 1) / 4); // 等价于复数i
+                ModIntTy<T> tmp0 = input[0];
+                ModIntTy<T> tmp1 = input[rank];
+                ModIntTy<T> tmp2 = input[rank * 2];
+                ModIntTy<T> tmp3 = input[rank * 3];
 
                 ntt_2point(tmp0, tmp2);
                 ntt_2point(tmp1, tmp3);
@@ -2013,19 +2027,19 @@ namespace hint
                 input[rank * 3] = tmp2 - tmp3;
             }
             template <typename T>
-            static constexpr void ntt_dif_8point(ModInt<T> *input, size_t rank = 1)
+            static constexpr void ntt_dif_8point(ModIntTy<T> *input, size_t rank = 1)
             {
-                constexpr ModInt<T> W_8_1 = ModInt<T>(G_ROOT).power((MOD - 1) / 8);
-                constexpr ModInt<T> W_8_2 = W_8_1.power(2);
-                constexpr ModInt<T> W_8_3 = W_8_1.power(3);
-                ModInt<T> tmp0 = input[0];
-                ModInt<T> tmp1 = input[rank];
-                ModInt<T> tmp2 = input[rank * 2];
-                ModInt<T> tmp3 = input[rank * 3];
-                ModInt<T> tmp4 = input[rank * 4];
-                ModInt<T> tmp5 = input[rank * 5];
-                ModInt<T> tmp6 = input[rank * 6];
-                ModInt<T> tmp7 = input[rank * 7];
+                constexpr ModIntTy<T> W_8_1 = ModIntTy<T>(G_ROOT).power((MOD - 1) / 8);
+                constexpr ModIntTy<T> W_8_2 = W_8_1.power(2);
+                constexpr ModIntTy<T> W_8_3 = W_8_1.power(3);
+                ModIntTy<T> tmp0 = input[0];
+                ModIntTy<T> tmp1 = input[rank];
+                ModIntTy<T> tmp2 = input[rank * 2];
+                ModIntTy<T> tmp3 = input[rank * 3];
+                ModIntTy<T> tmp4 = input[rank * 4];
+                ModIntTy<T> tmp5 = input[rank * 5];
+                ModIntTy<T> tmp6 = input[rank * 6];
+                ModIntTy<T> tmp7 = input[rank * 7];
 
                 ntt_2point(tmp0, tmp4);
                 ntt_2point(tmp1, tmp5);
@@ -2052,20 +2066,20 @@ namespace hint
                 input[rank * 7] = tmp6 - tmp7;
             }
             template <typename T>
-            static constexpr void ntt_dif_16point(ModInt<T> *input, size_t rank = 1)
+            static constexpr void ntt_dif_16point(ModIntTy<T> *input, size_t rank = 1)
             {
-                constexpr ModInt<T> W_16_1 = ModInt<T>(G_ROOT).power((MOD - 1) / 16);
-                constexpr ModInt<T> W_16_2 = W_16_1.power(2);
-                constexpr ModInt<T> W_16_3 = W_16_1.power(3);
-                constexpr ModInt<T> W_16_4 = W_16_1.power(4);
-                constexpr ModInt<T> W_16_5 = W_16_1.power(5);
-                constexpr ModInt<T> W_16_6 = W_16_1.power(6);
-                constexpr ModInt<T> W_16_7 = W_16_1.power(7);
+                constexpr ModIntTy<T> W_16_1 = ModIntTy<T>(G_ROOT).power((MOD - 1) / 16);
+                constexpr ModIntTy<T> W_16_2 = W_16_1.power(2);
+                constexpr ModIntTy<T> W_16_3 = W_16_1.power(3);
+                constexpr ModIntTy<T> W_16_4 = W_16_1.power(4);
+                constexpr ModIntTy<T> W_16_5 = W_16_1.power(5);
+                constexpr ModIntTy<T> W_16_6 = W_16_1.power(6);
+                constexpr ModIntTy<T> W_16_7 = W_16_1.power(7);
 
-                ModInt<T> tmp0 = input[0];
-                ModInt<T> tmp1 = input[rank];
-                ModInt<T> tmp2 = input[rank * 8];
-                ModInt<T> tmp3 = input[rank * 9];
+                ModIntTy<T> tmp0 = input[0];
+                ModIntTy<T> tmp1 = input[rank];
+                ModIntTy<T> tmp2 = input[rank * 8];
+                ModIntTy<T> tmp3 = input[rank * 9];
                 input[0] = tmp0 + tmp2;
                 input[rank] = tmp1 + tmp3;
                 input[rank * 8] = tmp0 - tmp2;
@@ -2103,32 +2117,32 @@ namespace hint
             }
             // 基2时间抽取ntt蝶形
             template <typename T>
-            static constexpr void ntt_radix2_dit_butterfly(ModInt<T> omega, ModInt<T> *input, size_t rank)
+            static constexpr void ntt_radix2_dit_butterfly(ModIntTy<T> omega, ModIntTy<T> *input, size_t rank)
             {
-                ModInt<T> tmp1 = input[0];
-                ModInt<T> tmp2 = input[rank] * omega;
+                ModIntTy<T> tmp1 = input[0];
+                ModIntTy<T> tmp2 = input[rank] * omega;
                 input[0] = tmp1 + tmp2;
                 input[rank] = tmp1 - tmp2;
             }
             // 基2频率抽取ntt蝶形
             template <typename T>
-            static constexpr void ntt_radix2_dif_butterfly(ModInt<T> omega, ModInt<T> *input, size_t rank)
+            static constexpr void ntt_radix2_dif_butterfly(ModIntTy<T> omega, ModIntTy<T> *input, size_t rank)
             {
-                ModInt<T> tmp1 = input[0];
-                ModInt<T> tmp2 = input[rank];
+                ModIntTy<T> tmp1 = input[0];
+                ModIntTy<T> tmp2 = input[rank];
                 input[0] = tmp1 + tmp2;
                 input[rank] = (tmp1 - tmp2) * omega;
             }
             // ntt分裂基时间抽取蝶形变换
             template <typename T>
-            static constexpr void ntt_split_radix_dit_butterfly(ModInt<T> omega, ModInt<T> omega_cube,
-                                                                ModInt<T> *input, size_t rank)
+            static constexpr void ntt_split_radix_dit_butterfly(ModIntTy<T> omega, ModIntTy<T> omega_cube,
+                                                                ModIntTy<T> *input, size_t rank)
             {
-                constexpr ModInt<T> W_4_1 = ModInt<T>(G_ROOT).power((MOD - 1) / 4); // 等价于复数i
-                ModInt<T> tmp0 = input[0];
-                ModInt<T> tmp1 = input[rank];
-                ModInt<T> tmp2 = input[rank * 2] * omega;
-                ModInt<T> tmp3 = input[rank * 3] * omega_cube;
+                constexpr ModIntTy<T> W_4_1 = ModIntTy<T>(G_ROOT).power((MOD - 1) / 4); // 等价于复数i
+                ModIntTy<T> tmp0 = input[0];
+                ModIntTy<T> tmp1 = input[rank];
+                ModIntTy<T> tmp2 = input[rank * 2] * omega;
+                ModIntTy<T> tmp3 = input[rank * 3] * omega_cube;
 
                 ntt_2point(tmp2, tmp3);
                 tmp3 = tmp3 * W_4_1;
@@ -2140,14 +2154,14 @@ namespace hint
             }
             // ntt分裂基频率抽取蝶形变换
             template <typename T>
-            static constexpr void ntt_split_radix_dif_butterfly(ModInt<T> omega, ModInt<T> omega_cube,
-                                                                ModInt<T> *input, size_t rank)
+            static constexpr void ntt_split_radix_dif_butterfly(ModIntTy<T> omega, ModIntTy<T> omega_cube,
+                                                                ModIntTy<T> *input, size_t rank)
             {
-                constexpr ModInt<T> W_4_1 = ModInt<T>(G_ROOT).power((MOD - 1) / 4); // 等价于复数i
-                ModInt<T> tmp0 = input[0];
-                ModInt<T> tmp1 = input[rank];
-                ModInt<T> tmp2 = input[rank * 2];
-                ModInt<T> tmp3 = input[rank * 3];
+                constexpr ModIntTy<T> W_4_1 = ModIntTy<T>(G_ROOT).power((MOD - 1) / 4); // 等价于复数i
+                ModIntTy<T> tmp0 = input[0];
+                ModIntTy<T> tmp1 = input[rank];
+                ModIntTy<T> tmp2 = input[rank * 2];
+                ModIntTy<T> tmp3 = input[rank * 3];
 
                 ntt_2point(tmp0, tmp2);
                 ntt_2point(tmp1, tmp3);
@@ -2160,7 +2174,7 @@ namespace hint
             }
             // 基2时间抽取ntt
             template <typename T>
-            static void ntt_radix2_dit(ModInt<T> *input, size_t ntt_len, bool bit_inv = true)
+            static void ntt_radix2_dit(ModIntTy<T> *input, size_t ntt_len, bool bit_inv = true)
             {
                 ntt_len = max_2pow(ntt_len);
                 if (ntt_len <= 1)
@@ -2183,12 +2197,12 @@ namespace hint
                 for (size_t rank = 2; rank < ntt_len / 2; rank *= 2)
                 {
                     size_t gap = rank * 2;
-                    ModInt<T> unit_omega = ModInt<T>(G_ROOT).power((MOD - 1) / gap);
+                    ModIntTy<T> unit_omega = ModIntTy<T>(G_ROOT).power((MOD - 1) / gap);
                     for (size_t begin = 0; begin < ntt_len; begin += (gap * 2))
                     {
                         ntt_2point(input[begin], input[begin + rank]);
                         ntt_2point(input[begin + gap], input[begin + rank + gap]);
-                        ModInt<T> omega = unit_omega;
+                        ModIntTy<T> omega = unit_omega;
                         for (size_t pos = begin + 1; pos < begin + rank; pos++)
                         {
                             ntt_radix2_dit_butterfly(omega, input + pos, rank);
@@ -2197,7 +2211,7 @@ namespace hint
                         }
                     }
                 }
-                ModInt<T> omega = 1, unit_omega = ModInt<T>(G_ROOT).power((MOD - 1) / ntt_len);
+                ModIntTy<T> omega = 1, unit_omega = ModIntTy<T>(G_ROOT).power((MOD - 1) / ntt_len);
                 ntt_len /= 2;
                 for (size_t pos = 0; pos < ntt_len; pos++)
                 {
@@ -2207,7 +2221,7 @@ namespace hint
             }
             // 基2频率抽取ntt
             template <typename T>
-            static void ntt_radix2_dif(ModInt<T> *input, size_t ntt_len, bool bit_inv = true)
+            static void ntt_radix2_dif(ModIntTy<T> *input, size_t ntt_len, bool bit_inv = true)
             {
                 ntt_len = max_2pow(ntt_len);
                 if (ntt_len <= 1)
@@ -2219,8 +2233,8 @@ namespace hint
                     ntt_2point(input[0], input[1]);
                     return;
                 }
-                ModInt<T> unit_omega = ModInt<T>(G_ROOT).power((MOD - 1) / ntt_len);
-                ModInt<T> omega = 1;
+                ModIntTy<T> unit_omega = ModIntTy<T>(G_ROOT).power((MOD - 1) / ntt_len);
+                ModIntTy<T> omega = 1;
                 for (size_t pos = 0; pos < ntt_len / 2; pos++)
                 {
                     ntt_radix2_dif_butterfly(omega, input + pos, ntt_len / 2);
@@ -2234,7 +2248,7 @@ namespace hint
                     {
                         ntt_2point(input[begin], input[begin + rank]);
                         ntt_2point(input[begin + gap], input[begin + rank + gap]);
-                        ModInt<T> omega = unit_omega;
+                        ModIntTy<T> omega = unit_omega;
                         for (size_t pos = begin + 1; pos < begin + rank; pos++)
                         {
                             ntt_radix2_dif_butterfly(omega, input + pos, rank);
