@@ -501,7 +501,7 @@ namespace hint_arithm
         hintvector<T> mul_bd(len_bd, 0);       // 存储b*d
         hintvector<T> add_mul(len_add_mul, 0); // 存储a+b与c+d,a+b的长度为len_b+1
 
-        T *add_ab = add_mul.type_ptr();
+        T *add_ab = add_mul.data();
         T *add_cd = add_ab + len_b + 1;
 
         abs_add<BASE>(in1, a_ptr, add_ab, len_b, len_a); // b+a
@@ -510,9 +510,9 @@ namespace hint_arithm
         size_t len_add_ab = ary_true_len(add_ab, len_b + 1);
         size_t len_add_cd = ary_true_len(add_cd, len_d + 1);
 
-        karatsuba_mul<BASE>(a_ptr, c_ptr, mul_ac.type_ptr(), len_a, len_c);            // a*c
-        karatsuba_mul<BASE>(in1, in2, mul_bd.type_ptr(), len_b, len_d);                // b*d
-        karatsuba_mul<BASE>(add_ab, add_cd, add_mul.type_ptr(), len_b + 1, len_d + 1); //(a+b)*(c+d)
+        karatsuba_mul<BASE>(a_ptr, c_ptr, mul_ac.data(), len_a, len_c);            // a*c
+        karatsuba_mul<BASE>(in1, in2, mul_bd.data(), len_b, len_d);                // b*d
+        karatsuba_mul<BASE>(add_ab, add_cd, add_mul.data(), len_b + 1, len_d + 1); //(a+b)*(c+d)
         add_mul.change_length(len_add_ab + len_add_cd);
 
         len_ac = mul_ac.set_true_len();
@@ -520,8 +520,8 @@ namespace hint_arithm
         len_add_mul = add_mul.set_true_len();
 
         ary_clr(out, len1 + len2);
-        ary_copy(out, mul_bd.type_ptr(), len_bd); // 结果加上b*d
-        ary_copy(out + len_b * 2, mul_ac.type_ptr(), len_ac);
+        ary_copy(out, mul_bd.data(), len_bd); // 结果加上b*d
+        ary_copy(out + len_b * 2, mul_ac.data(), len_ac);
 
         INT_64 carry = 0;
         for (size_t pos = len_b; pos < len1 + len2; pos++)
@@ -621,13 +621,13 @@ namespace hint_arithm
         size_t mul_len = len + len2;
         while (len + block_size < len1)
         {
-            abs_mul<BASE>(in1 + len, in2, prod.type_ptr(), block_size, len2);
-            abs_add<BASE>(out + len, prod.type_ptr(), out + len, mul_len - block_size, block_size + len2);
+            abs_mul<BASE>(in1 + len, in2, prod.data(), block_size, len2);
+            abs_add<BASE>(out + len, prod.data(), out + len, mul_len - block_size, block_size + len2);
             mul_len = block_size + len2;
             len += block_size;
         }
-        abs_mul<BASE>(in1 + len, in2, prod.type_ptr(), block_size, len2);
-        abs_add<BASE, false>(out + len, prod.type_ptr(), out + len, mul_len - block_size, block_size + len2);
+        abs_mul<BASE>(in1 + len, in2, prod.data(), block_size, len2);
+        abs_add<BASE, false>(out + len, prod.data(), out + len, mul_len - block_size, block_size + len2);
     }
     // 高精度乘低精度
     template <UINT_64 BASE, bool is_carry = true, typename T>
@@ -750,13 +750,13 @@ namespace hint_arithm
             if (dividend_2digits >= divisor_2digits)
             {
                 quo_digit = dividend_2digits / divisor_2digits;
-                abs_mul_num<BASE>(divisor, quo_digit, sub.type_ptr(), len2);
+                abs_mul_num<BASE>(divisor, quo_digit, sub.data(), len2);
                 sub.set_true_len();
                 size_t sub_len = sub.length();
-                if (abs_compare(dividend + shift, sub.type_ptr(), len1 - shift, sub_len) < 0)
+                if (abs_compare(dividend + shift, sub.data(), len1 - shift, sub_len) < 0)
                 {
                     quo_digit--;
-                    abs_sub<BASE>(sub.type_ptr(), divisor, sub.type_ptr(), sub_len, len2);
+                    abs_sub<BASE>(sub.data(), divisor, sub.data(), sub_len, len2);
                 }
             }
             else
@@ -768,21 +768,21 @@ namespace hint_arithm
                     quo_digit = BASE - 1;
                 }
                 shift--;
-                abs_mul_num<BASE>(divisor, quo_digit, sub.type_ptr(), len2);
+                abs_mul_num<BASE>(divisor, quo_digit, sub.data(), len2);
                 sub.set_true_len();
                 size_t sub_len = sub.length();
-                if (abs_compare(dividend + shift, sub.type_ptr(), len1 - shift, sub_len) < 0)
+                if (abs_compare(dividend + shift, sub.data(), len1 - shift, sub_len) < 0)
                 {
                     quo_digit--;
-                    abs_sub<BASE>(sub.type_ptr(), divisor, sub.type_ptr(), sub_len, len2);
-                    if (abs_compare(dividend + shift, sub.type_ptr(), len1 - shift, sub_len) < 0)
+                    abs_sub<BASE>(sub.data(), divisor, sub.data(), sub_len, len2);
+                    if (abs_compare(dividend + shift, sub.data(), len1 - shift, sub_len) < 0)
                     {
                         quo_digit--;
-                        abs_sub<BASE>(sub.type_ptr(), divisor, sub.type_ptr(), sub_len, len2);
+                        abs_sub<BASE>(sub.data(), divisor, sub.data(), sub_len, len2);
                     }
                 }
             }
-            abs_sub<BASE>(dividend + shift, sub.type_ptr(), dividend + shift, len1, sub.length());
+            abs_sub<BASE>(dividend + shift, sub.data(), dividend + shift, len1, sub.length());
             len1 = ary_true_len(dividend, len1);
             quot[shift] = quo_digit;
         }
@@ -816,7 +816,7 @@ namespace hint_arithm
         constexpr size_t LONG_DIV_THRESHOLD = 50;
         if (len2 <= LONG_DIV_THRESHOLD) // 小于等于阈值调用长除法
         {
-            abs_long_div<BASE>(dividend, divisor, quot.type_ptr(), len1, len2);
+            abs_long_div<BASE>(dividend, divisor, quot.data(), len1, len2);
         }
         else if (len1 >= len2 * 2 || len1 > ((len2 + 1) / 2) * 3) // 2n/n的除法，进行两次递归
         {
@@ -830,7 +830,7 @@ namespace hint_arithm
             abs_rec_div<BASE>(dividend, divisor, quot, dividend_len, len2);
             quot.change_length(quot_len);
             quot_len = quot.set_true_len();
-            abs_add<BASE>(quot.type_ptr() + base_len, quot_tmp.type_ptr(), quot.type_ptr() + base_len, quot_len - base_len, quot_tmp_len);
+            abs_add<BASE>(quot.data() + base_len, quot_tmp.data(), quot.data() + base_len, quot_len - base_len, quot_tmp_len);
             quot.change_length(len1 - len2 + 1);
         }
         else
@@ -844,21 +844,21 @@ namespace hint_arithm
             hintvector<T> prod(base_len + quot_len);
             prod.change_length(base_len + quot_len);
             // 用除数的低base_len位乘以刚刚试出来的商,而后与余数比较,必须满足quot*(divisor%(base^base_len))<=dividend
-            abs_mul<BASE>(divisor, quot.type_ptr(), prod.type_ptr(), base_len, quot_len);
+            abs_mul<BASE>(divisor, quot.data(), prod.data(), base_len, quot_len);
             size_t prod_len = prod.set_true_len();
             len1 = ary_true_len(dividend, len1);
 
-            while (abs_compare(prod.type_ptr(), dividend, prod_len, len1) > 0)
+            while (abs_compare(prod.data(), dividend, prod_len, len1) > 0)
             {
-                abs_sub<BASE>(quot.type_ptr(), ONE, quot.type_ptr(), quot_len, 1);
-                abs_sub<BASE>(prod.type_ptr(), divisor, prod.type_ptr(), prod_len, base_len);
+                abs_sub<BASE>(quot.data(), ONE, quot.data(), quot_len, 1);
+                abs_sub<BASE>(prod.data(), divisor, prod.data(), prod_len, base_len);
                 abs_add<BASE>(dividend + base_len, divisor + base_len, dividend + base_len, len1 - base_len, len2 - base_len);
 
                 quot_len = quot.set_true_len();
                 prod_len = prod.set_true_len();
                 len1 = ary_true_len(dividend, std::max(len1, len2) + 1);
             }
-            abs_sub<BASE>(dividend, prod.type_ptr(), dividend, len1, prod_len);
+            abs_sub<BASE>(dividend, prod.data(), dividend, len1, prod_len);
         }
     }
     // 绝对值除法
@@ -871,8 +871,8 @@ namespace hint_arithm
         hintvector<T> normalized_dividend(len1 + 1); // 定义规则化的被除数
         normalized_dividend.change_length(len1 + 1);
 
-        T *divisor_ptr = normalized_divisor.type_ptr();
-        T *dividend_ptr = normalized_dividend.type_ptr();
+        T *divisor_ptr = normalized_divisor.data();
+        T *dividend_ptr = normalized_dividend.data();
         T multiplier = divisor_normalize<BASE>(divisor, divisor_ptr, len2); // 除数规则化,获得乘数
         abs_mul_num<BASE>(dividend, multiplier, dividend_ptr, len1);        // 被除数规则化
         len1 = normalized_dividend.set_true_len();
@@ -1261,7 +1261,7 @@ public:
     hint::INT_32 abs_compare(const Integer &input) const
     {
         size_t len1 = length(), len2 = input.length();
-        return hint_arithm::abs_compare(data.type_ptr(), input.data.type_ptr(), len1, len2);
+        return hint_arithm::abs_compare(data.data(), input.data.data(), len1, len2);
     }
     Integer abs_add(const Integer &input) const
     {
@@ -1269,9 +1269,9 @@ public:
         Integer result;
         result.data = DataVec(std::max(len1, len2) + 1);
         result.data.change_length(std::max(len1, len2) + 1);
-        auto ptr1 = data.type_ptr();
-        auto ptr2 = input.data.type_ptr();
-        auto res_ptr = result.data.type_ptr();
+        auto ptr1 = data.data();
+        auto ptr2 = input.data.data();
+        auto res_ptr = result.data.data();
         hint_arithm::abs_add<BASE, true>(ptr1, ptr2, res_ptr, len1, len2);
         result.data.set_true_len();
         return result;
@@ -1282,9 +1282,9 @@ public:
         Integer result;
         result.data = DataVec(std::max(len1, len2));
         result.data.change_length(std::max(len1, len2));
-        auto ptr1 = data.type_ptr();
-        auto ptr2 = input.data.type_ptr();
-        auto res_ptr = result.data.type_ptr();
+        auto ptr1 = data.data();
+        auto ptr2 = input.data.data();
+        auto res_ptr = result.data.data();
         hint_arithm::abs_sub<BASE>(ptr1, ptr2, res_ptr, len1, len2);
         result.data.set_true_len();
         return result;
@@ -1388,9 +1388,9 @@ public:
         result.data = DataVec(len1 + len2);
         result.data.change_length(len1 + len2);
         result.data.clear();
-        auto ptr1 = data.type_ptr();
-        auto ptr2 = input.data.type_ptr();
-        auto res_ptr = result.data.type_ptr();
+        auto ptr1 = data.data();
+        auto ptr2 = input.data.data();
+        auto res_ptr = result.data.data();
         if (abs_compare(input) == 0)
         {
             hint_arithm::abs_sqr<BASE>(ptr1, res_ptr, len1);
@@ -1416,8 +1416,8 @@ public:
         {
             throw("Can't divide by zero\n");
         }
-        auto ptr1 = data.type_ptr();
-        auto ptr2 = input.data.type_ptr();
+        auto ptr1 = data.data();
+        auto ptr2 = input.data.data();
 
         hint_arithm::abs_div<BASE>(ptr1, ptr2, result.data, len1, len2, false);
 
@@ -1437,8 +1437,8 @@ public:
         {
             throw("Can't divide by zero\n");
         }
-        auto ptr1 = data.type_ptr();
-        auto ptr2 = input.data.type_ptr();
+        auto ptr1 = data.data();
+        auto ptr2 = input.data.data();
 
         result.data = hint_arithm::abs_div<BASE>(ptr1, ptr2, result.data, len1, len2);
 
@@ -1488,7 +1488,7 @@ Integer pi_generator(hint::UINT_32 n)
     hint::UINT_32 i = 2;
     while (a.length() > 0)
     {
-        a = a * i;
+        a = a * Integer(i);
         a = a / (i * 2 + 1);
         result = result + a;
         i++;

@@ -56,11 +56,6 @@ namespace hint
     constexpr UINT_64 NTT_ROOT2 = 3;
     constexpr size_t NTT_MAX_LEN = 1ull << 28;
 
-#if MULTITHREAD == 1
-    const UINT_32 hint_threads = std::thread::hardware_concurrency();
-    const UINT_32 log2_threads = std::ceil(hint_log2(hint_threads));
-    std::atomic<UINT_32> cur_ths;
-#endif
     double cas(double x)
     {
         return std::cos(x) + std::sin(x);
@@ -103,6 +98,11 @@ namespace hint
         }
         return res;
     }
+#if MULTITHREAD == 1
+    const UINT_32 hint_threads = std::thread::hardware_concurrency();
+    const UINT_32 log2_threads = std::ceil(hint_log2(hint_threads));
+    std::atomic<UINT_32> cur_ths;
+#endif
     template <typename T>
     constexpr bool is_neg(T x)
     {
@@ -462,8 +462,6 @@ namespace hint
             INT_32 max_log_size = 2;
             INT_32 cur_log_size = 2;
 
-            static constexpr double PI = HINT_PI;
-
             ComplexTable(const ComplexTable &) = delete;
             ComplexTable &operator=(const ComplexTable &) = delete;
 
@@ -533,7 +531,7 @@ namespace hint
             // 返回单位圆上平分m份的第n个
             static Complex unit_root(size_t m, size_t n)
             {
-                return unit_root((2.0 * PI * n) / m);
+                return unit_root((2.0 * HINT_PI * n) / m);
             }
             // shift表示圆平分为1<<shift份,n表示第几个单位根
             Complex get_complex(UINT_32 shift, size_t n) const
@@ -623,7 +621,6 @@ namespace hint
             INT_32 cur_log_size = 1;
 
             static constexpr size_t FAC = 3;
-            static constexpr double PI = HINT_PI;
 
             ComplexTableX(const ComplexTableX &) = delete;
             ComplexTableX &operator=(const ComplexTableX &) = delete;
@@ -636,7 +633,7 @@ namespace hint
                 max_shift = std::max<size_t>(max_shift, 1);
                 max_log_size = max_shift;
                 table.resize(max_shift + 1);
-                table[0] = table[1] = std::vector<Complex>({1});
+                table[0] = table[1] = std::vector<Complex>{1};
 #if TABLE_PRELOAD == 1
                 expend(max_shift);
 #endif
@@ -670,7 +667,7 @@ namespace hint
             // 返回单位圆上平分m份的第n个
             static Complex unit_root(size_t m, size_t n)
             {
-                return unit_root((2.0 * PI * n) / m);
+                return unit_root((2.0 * HINT_PI * n) / m);
             }
             // shift表示圆平分为1<<shift份,n表示第几个单位根
             Complex get_complex(UINT_32 shift, size_t n) const
@@ -690,7 +687,6 @@ namespace hint
             INT_32 max_log_size = 1;
             INT_32 cur_log_size = 1;
 
-            static constexpr double PI = HINT_PI;
             static constexpr size_t FAC = 3;
             ComplexTableZ(const ComplexTableZ &) = delete;
             ComplexTableZ &operator=(const ComplexTableZ &) = delete;
@@ -737,7 +733,7 @@ namespace hint
             // 返回单位圆上平分m份的第n个
             static Complex unit_root(size_t m, size_t n)
             {
-                return unit_root((2.0 * PI * n) / m);
+                return unit_root((2.0 * HINT_PI * n) / m);
             }
             // shift表示圆平分为1<<shift份,n表示第几个单位根
             Complex get_complex(UINT_32 shift, size_t n) const
@@ -1652,6 +1648,7 @@ namespace hint
             fft_dit(input, fft_len, bit_inv);
             fft_conj(input, fft_len, fft_len);
         }
+#if MULTITHREAD == 1
         void fft_dit_2ths(Complex *input, size_t fft_len)
         {
             const size_t half_len = fft_len / 2;
@@ -1740,6 +1737,7 @@ namespace hint
             fft_dif_2ths(input + half_len, half_len);
             th1.wait();
         }
+#endif
         /// @brief 快速哈特莱变换
         /// @param input 浮点数组指针
         /// @param fht_len 变换的长度
@@ -2803,7 +2801,7 @@ namespace hint
             }
             return ary_ptr;
         }
-        T *type_ptr() const
+        constexpr T *data() const
         {
             return ary_ptr;
         }
@@ -2844,11 +2842,11 @@ namespace hint
             }
             std::cout << std::endl;
         }
-        SIZE_TYPE capacity() const
+        constexpr SIZE_TYPE capacity() const
         {
             return size;
         }
-        SIZE_TYPE length() const
+        constexpr SIZE_TYPE length() const
         {
             return sign_n_len & LEN_MAX;
         }
