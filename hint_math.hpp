@@ -15,7 +15,7 @@
 #ifndef HINT_MATH_HPP
 #define HINT_MATH_HPP
 #define MULTITHREAD 0   // 0 means no, 1 means yes
-#define TABLE_TYPE 1    // 0 means ComplexTable, 1 means ComplexTableX,2 means ComplexTableZ
+#define TABLE_TYPE 1    // 0 means ComplexTable, 1 means ComplexTableX
 #define TABLE_PRELOAD 1 // 0 means no, 1 means yes
 
 namespace hint
@@ -490,7 +490,11 @@ namespace hint
                 {
                     size_t len = 1ull << i, vec_size = len / 4;
                     table[vec_size] = Complex(1, 0);
-                    for (size_t pos = 1; pos < vec_size / 2; pos++)
+                    for (size_t pos = 0; pos < vec_size / 2; pos++)
+                    {
+                        table[vec_size + pos * 2] = table[vec_size / 2 + pos];
+                    }
+                    for (size_t pos = 1; pos < vec_size / 2; pos += 2)
                     {
                         double cos_theta = std::cos(HINT_2PI * pos / len);
                         double sin_theta = std::sin(HINT_2PI * pos / len);
@@ -627,7 +631,11 @@ namespace hint
                 {
                     size_t len = 1ull << i, vec_size = len * FAC / 4;
                     table[i].resize(vec_size);
-                    for (size_t pos = 0; pos < len / 4; pos++)
+                    for (size_t pos = 0; pos < vec_size / 2; pos++)
+                    {
+                        table[i][pos * 2] = table[i - 1][pos];
+                    }
+                    for (size_t pos = 1; pos < len / 4; pos += 2)
                     {
                         Complex tmp = std::conj(unit_root(len, pos));
                         table[i][pos] = tmp;
@@ -709,10 +717,11 @@ namespace hint
             delete[] rev;
         }
         // 2点fft
-        inline void fft_2point(Complex &sum, Complex &diff)
+        template <typename T>
+        inline void fft_2point(T &sum, T &diff)
         {
-            Complex tmp0 = sum;
-            Complex tmp1 = diff;
+            T tmp0 = sum;
+            T tmp1 = diff;
             sum = tmp0 + tmp1;
             diff = tmp0 - tmp1;
         }
