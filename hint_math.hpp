@@ -14,9 +14,9 @@
 
 #ifndef HINT_MATH_HPP
 #define HINT_MATH_HPP
-#define MULTITHREAD 0   // 0 means no, 1 means yes
-#define TABLE_TYPE 1    // 0 means ComplexTable, 1 means ComplexTableX
-#define TABLE_PRELOAD 1 // 0 means no, 1 means yes
+#define MULTITHREAD 0   // 多线程 0 means no, 1 means yes
+#define TABLE_TYPE 1    // 复数表的类型 0 means ComplexTable, 1 means ComplexTableX
+#define TABLE_PRELOAD 1 // 是否提前初始化表 0 means no, 1 means yes
 
 namespace hint
 {
@@ -481,7 +481,6 @@ namespace hint
             }
             void expand(INT_32 shift)
             {
-                shift = std::max<INT_32>(shift, 3);
                 if (shift > max_log_size)
                 {
                     throw("FFT length too long for lut\n");
@@ -599,8 +598,8 @@ namespace hint
         {
         private:
             std::vector<std::vector<Complex>> table;
-            INT_32 max_log_size = 1;
-            INT_32 cur_log_size = 1;
+            INT_32 max_log_size = 2;
+            INT_32 cur_log_size = 2;
 
             static constexpr size_t FAC = 3;
 
@@ -612,17 +611,17 @@ namespace hint
             // 初始化可以生成平分圆1<<shift份产生的单位根的表
             ComplexTableX(UINT_32 max_shift)
             {
-                max_shift = std::max<size_t>(max_shift, 1);
+                max_shift = std::max<size_t>(max_shift, cur_log_size);
                 max_log_size = max_shift;
                 table.resize(max_shift + 1);
                 table[0] = table[1] = std::vector<Complex>{1};
+                table[2] = std::vector<Complex>{Complex(1, 0), Complex(0, -1), Complex(-1, 0)};
 #if TABLE_PRELOAD == 1
                 expand(max_shift);
 #endif
             }
             void expand(INT_32 shift)
             {
-                shift = std::max<INT_32>(shift, 2);
                 if (shift > max_log_size)
                 {
                     throw("FFT length too long for lut\n");
@@ -1572,6 +1571,7 @@ namespace hint
         {
             const size_t half_len = fft_len / 2;
             const INT_32 log_len = hint_log2(fft_len);
+            TABLE.expand(log_len);
             auto th = std::async(fft_dit, input, half_len, false);
             fft_dit(input + half_len, half_len, false);
             th.wait();
@@ -1591,6 +1591,7 @@ namespace hint
         {
             const size_t half_len = fft_len / 2;
             const INT_32 log_len = hint_log2(fft_len);
+            TABLE.expand(log_len);
             auto proc = [&](size_t start, size_t end)
             {
                 for (size_t i = start; i < end; i++)
@@ -1610,6 +1611,7 @@ namespace hint
         {
             const size_t half_len = fft_len / 2;
             const INT_32 log_len = hint_log2(fft_len);
+            TABLE.expand(log_len);
             auto th1 = std::async(fft_dit_2ths, input, half_len);
             fft_dit_2ths(input + half_len, half_len);
             th1.wait();
@@ -1635,6 +1637,7 @@ namespace hint
         {
             const size_t half_len = fft_len / 2;
             const INT_32 log_len = hint_log2(fft_len);
+            TABLE.expand(log_len);
             auto proc = [&](size_t start, size_t end)
             {
                 for (size_t i = start; i < end; i++)
