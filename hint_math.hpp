@@ -306,8 +306,6 @@ namespace hint
     /// @param num2 n模除mod2的余数
     /// @param mod1 第一个模数
     /// @param mod2 第二个模数
-    /// @param inv1 第一个模数在第二个模数下的逆元
-    /// @param inv2 第二个模数在第一个模数下的逆元
     /// @return n的最小解
     template <UINT_64 MOD1, UINT_64 MOD2>
     constexpr UINT_64 qcrt(UINT_64 num1, UINT_64 num2)
@@ -1436,7 +1434,7 @@ namespace hint
             fft_dif_32point(input, 1);
         }
 
-       // 辅助选择函数
+        // 辅助选择函数
         template <size_t LEN = 1>
         void fft_split_radix_dit_template_alt(Complex *input, size_t fft_len)
         {
@@ -2255,14 +2253,14 @@ namespace hint
             }
         };
         template <size_t LEN, UINT_64 MOD, UINT_64 G_ROOT>
-        struct NTT_ALERT
+        struct NTT_ALT
         {
             using ModInt32 = ModInt<MOD, UINT_32>;
             static constexpr void ntt_dit_template(ModInt32 *input, size_t ntt_len)
             {
                 if (ntt_len > LEN)
                 {
-                    NTT_ALERT<LEN * 2, MOD, G_ROOT>::ntt_dit_template(input, ntt_len);
+                    NTT_ALT<LEN * 2, MOD, G_ROOT>::ntt_dit_template(input, ntt_len);
                     return;
                 }
                 SPLIT_RADIX_NTT<LEN, MOD, G_ROOT>::ntt_split_radix_dit_template(input);
@@ -2271,14 +2269,14 @@ namespace hint
             {
                 if (ntt_len > LEN)
                 {
-                    NTT_ALERT<LEN * 2, MOD, G_ROOT>::ntt_dif_template(input, ntt_len);
+                    NTT_ALT<LEN * 2, MOD, G_ROOT>::ntt_dif_template(input, ntt_len);
                     return;
                 }
                 SPLIT_RADIX_NTT<LEN, MOD, G_ROOT>::ntt_split_radix_dif_template(input);
             }
         };
         template <UINT_64 MOD, UINT_64 G_ROOT>
-        struct NTT_ALERT<1 << 30, MOD, G_ROOT>
+        struct NTT_ALT<1 << 30, MOD, G_ROOT>
         {
             using ModInt32 = ModInt<MOD, UINT_32>;
             static constexpr void ntt_dit_template(ModInt32 *input, size_t ntt_len) {}
@@ -2298,7 +2296,7 @@ namespace hint
             {
                 binary_reverse_swap(input, ntt_len);
             }
-            NTT_ALERT<1, MOD, G_ROOT>::ntt_dit_template(reinterpret_cast<ModInt<MOD, UINT_32> *>(input), ntt_len);
+            NTT_ALT<1, MOD, G_ROOT>::ntt_dit_template(reinterpret_cast<ModInt<MOD, UINT_32> *>(input), ntt_len);
         }
         /// @brief 频率抽取NTT
         /// @tparam MOD
@@ -2310,7 +2308,7 @@ namespace hint
         inline void ntt_dif(UINT_32 *input, size_t ntt_len, bool bit_rev = true)
         {
             ntt_len = max_2pow(ntt_len);
-            NTT_ALERT<1, MOD, G_ROOT>::ntt_dif_template(reinterpret_cast<ModInt<MOD, UINT_32> *>(input), ntt_len);
+            NTT_ALT<1, MOD, G_ROOT>::ntt_dif_template(reinterpret_cast<ModInt<MOD, UINT_32> *>(input), ntt_len);
             if (bit_rev)
             {
                 binary_reverse_swap(input, ntt_len);
