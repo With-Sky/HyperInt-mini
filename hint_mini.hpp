@@ -387,31 +387,40 @@ namespace hint_arithm
         }
         size_t conv_res_len = len1 + len2 - 1;   // 卷积结果长度
         size_t ntt_len = min_2pow(conv_res_len); // ntt长度
-        UINT_32 *ntt_ary1 = new UINT_32[ntt_len * 4]{};
-        UINT_32 *ntt_ary2 = ntt_ary1 + ntt_len;
-        UINT_32 *ntt_ary3 = ntt_ary1 + ntt_len * 2;
-        UINT_32 *ntt_ary4 = ntt_ary1 + ntt_len * 3;
-        hint::ary_copy_2type(ntt_ary1, in1, len1);
-        hint::ary_copy_2type(ntt_ary2, in1, len1);
-        hint::ary_copy_2type(ntt_ary3, in2, len2);
-        hint::ary_copy_2type(ntt_ary4, in2, len2);
+        UINT_32 *ary1 = new UINT_32[ntt_len * 4]{};
+        UINT_32 *ary2 = ary1 + ntt_len;
+        UINT_32 *ary3 = ary1 + ntt_len * 2;
+        UINT_32 *ary4 = ary1 + ntt_len * 3;
 
-        constexpr UINT_64 mod1 = NTT_MOD1, mod2 = NTT_MOD2;
-        constexpr UINT_64 root1 = NTT_ROOT1, root2 = NTT_ROOT2;
+        hint::ary_copy_2type(ary1, in1, len1);
+        hint::ary_copy_2type(ary2, in2, len2);
 
-        hint_transform::ntt<mod1, root1>(ntt_ary1, ntt_len);
-        hint_transform::ntt<mod2, root2>(ntt_ary2, ntt_len);
-        hint_transform::ntt<mod1, root1>(ntt_ary3, ntt_len);
-        hint_transform::ntt<mod2, root2>(ntt_ary4, ntt_len);
-        hint::ary_mul_mod<mod1>(ntt_ary1, ntt_ary3, ntt_ary1, ntt_len);
-        hint::ary_mul_mod<mod2>(ntt_ary2, ntt_ary4, ntt_ary2, ntt_len);
-        hint_transform::intt<mod1, root1>(ntt_ary1, ntt_len);
-        hint_transform::intt<mod2, root2>(ntt_ary2, ntt_len);
+        hint::ary_copy_2type(ary3, in1, len1);
+        hint::ary_copy_2type(ary4, in2, len2);
+
+        using ModTy1 = hint_transform::ntt1::NTTModInt32;
+        using ModTy2 = hint_transform::ntt2::NTTModInt32;
+
+        ModTy1 *ntt_ary1 = reinterpret_cast<ModTy1 *>(ary1);
+        ModTy1 *ntt_ary2 = reinterpret_cast<ModTy1 *>(ary2);
+        hint_transform::ntt1::ntt_dif(ntt_ary1, ntt_len);
+        hint_transform::ntt1::ntt_dif(ntt_ary2, ntt_len);
+        ary_mul(ntt_ary1, ntt_ary2, ntt_ary1, ntt_len);
+        hint_transform::intt1::ntt_dit(ntt_ary1, ntt_len);
+        hint_transform::intt1::ntt_basic::ntt_normalize(ntt_ary1, ntt_len);
+
+        ModTy2 *ntt_ary3 = reinterpret_cast<ModTy2 *>(ary3);
+        ModTy2 *ntt_ary4 = reinterpret_cast<ModTy2 *>(ary4);
+        hint_transform::ntt2::ntt_dif(ntt_ary3, ntt_len);
+        hint_transform::ntt2::ntt_dif(ntt_ary4, ntt_len);
+        ary_mul(ntt_ary3, ntt_ary4, ntt_ary3, ntt_len);
+        hint_transform::intt2::ntt_dit(ntt_ary3, ntt_len);
+        hint_transform::intt2::ntt_basic::ntt_normalize(ntt_ary3, ntt_len);
 
         hint::UINT_64 carry = 0;
         for (size_t i = 0; i < conv_res_len; i++)
         {
-            carry += qcrt<mod1, mod2>(ntt_ary1[i], ntt_ary2[i]);
+            carry += qcrt<ModTy1::mod(), ModTy2::mod()>(ary1[i], ary3[i]);
             std::tie(carry, out[i]) = div_mod(carry, BASE);
         }
         out[conv_res_len] = carry % BASE;
@@ -427,27 +436,31 @@ namespace hint_arithm
         }
         size_t conv_res_len = len * 2 - 1;       // 卷积结果长度
         size_t ntt_len = min_2pow(conv_res_len); // ntt长度
-        UINT_32 *ntt_ary1 = new UINT_32[ntt_len * 2]{};
-        UINT_32 *ntt_ary2 = ntt_ary1 + ntt_len;
-        hint::ary_copy_2type(ntt_ary1, in, len);
-        hint::ary_copy(ntt_ary2, ntt_ary1, len);
+        UINT_32 *ary1 = new UINT_32[ntt_len * 2]{};
+        UINT_32 *ary2 = ary1 + ntt_len;
 
-        constexpr UINT_64 mod1 = NTT_MOD1, mod2 = NTT_MOD2;
-        constexpr UINT_64 root1 = NTT_ROOT1, root2 = NTT_ROOT2;
+        hint::ary_copy_2type(ary1, in, len);
+        hint::ary_copy_2type(ary2, in, len);
 
-        hint_transform::ntt<mod1, root1>(ntt_ary1, ntt_len);
-        hint_transform::ntt<mod2, root2>(ntt_ary2, ntt_len);
+        using ModTy1 = hint_transform::ntt1::NTTModInt32;
+        using ModTy2 = hint_transform::ntt2::NTTModInt32;
 
-        hint::ary_mul_mod<mod1>(ntt_ary1, ntt_ary1, ntt_ary1, ntt_len);
-        hint::ary_mul_mod<mod2>(ntt_ary2, ntt_ary2, ntt_ary2, ntt_len);
+        ModTy1 *ntt_ary1 = reinterpret_cast<ModTy1 *>(ary1);
+        hint_transform::ntt1::ntt_dif(ntt_ary1, ntt_len);
+        ary_mul(ntt_ary1, ntt_ary1, ntt_ary1, ntt_len);
+        hint_transform::intt1::ntt_dit(ntt_ary1, ntt_len);
+        hint_transform::intt1::ntt_basic::ntt_normalize(ntt_ary1, ntt_len);
 
-        hint_transform::intt<mod1, root1>(ntt_ary1, ntt_len);
-        hint_transform::intt<mod2, root2>(ntt_ary2, ntt_len);
+        ModTy2 *ntt_ary2 = reinterpret_cast<ModTy2 *>(ary2);
+        hint_transform::ntt2::ntt_dif(ntt_ary2, ntt_len);
+        ary_mul(ntt_ary2, ntt_ary2, ntt_ary2, ntt_len);
+        hint_transform::intt2::ntt_dit(ntt_ary2, ntt_len);
+        hint_transform::intt2::ntt_basic::ntt_normalize(ntt_ary2, ntt_len);
 
         hint::UINT_64 carry = 0;
         for (size_t i = 0; i < conv_res_len; i++)
         {
-            carry += qcrt<mod1, mod2>(ntt_ary1[i], ntt_ary2[i]);
+            carry += qcrt<ModTy1::mod(), ModTy2::mod()>(ary1[i], ary2[i]);
             std::tie(carry, out[i]) = div_mod(carry, BASE);
         }
         out[conv_res_len] = carry % BASE;
@@ -471,7 +484,7 @@ namespace hint_arithm
         {
             return;
         }
-        if (len1 + len2 - 1 <= NTT_MAX_LEN)
+        if (len1 + len2 - 1 <= NTT_MAX_LEN1)
         {
             const size_t ntt_len1 = len1 * std::max<size_t>(1, sizeof(T) / sizeof(NTT_Ty));
             const size_t ntt_len2 = len2 * std::max<size_t>(1, sizeof(T) / sizeof(NTT_Ty));
@@ -560,7 +573,7 @@ namespace hint_arithm
         {
             fft_mul<BASE>(in1, in2, out, len1, len2);
         }
-        else if (len1 + len2 - 1 <= NTT_MAX_LEN)
+        else if (len1 + len2 - 1 <= NTT_MAX_LEN1)
         {
             ntt_mul<BASE>(in1, in2, out, len1, len2);
         }
@@ -582,7 +595,7 @@ namespace hint_arithm
         {
             fft_mul<BASE>(in, in, out, len, len);
         }
-        else if (len * 2 - 1 <= NTT_MAX_LEN)
+        else if (len * 2 - 1 <= NTT_MAX_LEN1)
         {
             ntt_sqr<BASE>(in, out, len);
         }
@@ -896,10 +909,10 @@ namespace hint_arithm
         return normalized_dividend;
     }
     // 多项式求逆
-    template <UINT_64 MOD, UINT_64 G_ROOT>
+    template <UINT_64 MOD, UINT_64 ROOT>
     void poly_inv(UINT_32 *in, UINT_32 *out, size_t len)
     {
-        constexpr UINT_64 IG_ROOT = mod_inv(G_ROOT, MOD);
+        constexpr UINT_64 IROOT = mod_inv(ROOT, MOD);
         // // B≡2B'-AB'^2
         UINT_32 *in_ntt = new UINT_32[len * 2];
         out[0] = mod_inv(in[0], MOD);
@@ -909,14 +922,14 @@ namespace hint_arithm
             ary_copy(in_ntt, in, rank);
             ary_clr(in_ntt + rank, rank);
             ary_clr(out + rank / 2, gap - rank / 2);
-            hint_transform::ntt_dif<MOD, G_ROOT>(in_ntt, gap, false);
-            hint_transform::ntt_dif<MOD, G_ROOT>(out, gap, false);
+            hint_transform::NTT<MOD, ROOT>::ntt_dif(in_ntt, gap);
+            hint_transform::NTT<MOD, ROOT>::ntt_dif(out, gap);
             for (size_t i = 0; i < gap; i++)
             {
                 UINT_64 a = in_ntt[i], b = out[i];
                 out[i] = (b * 2 + MOD - (b * b % MOD) * a % MOD) % MOD;
             }
-            hint_transform::ntt_dit<MOD, IG_ROOT>(out, gap, false);
+            hint_transform::NTT<MOD, IROOT>::ntt_dit(out, gap);
             UINT_64 inv = mod_inv(gap, MOD);
             for (size_t i = 0; i < gap / 2; i++)
             {
@@ -1397,7 +1410,6 @@ public:
         }
         else
         {
-            // hint_arithm::fft_mul<BASE>(ptr1, ptr2, res_ptr, len1, len2);
             hint_arithm::abs_mul_balance<BASE>(ptr1, ptr2, res_ptr, len1, len2);
         }
         result.data.set_true_len();
@@ -1446,6 +1458,7 @@ public:
         result.change_sign(is_neg() != input.is_neg());
         return result;
     }
+
     Integer power(uint64_t n) const
     {
         Integer result = 1;
@@ -1477,8 +1490,24 @@ public:
         return result;
     }
 };
+
 constexpr hint::UINT_32 Integer::DIGIT;
 constexpr hint::UINT_64 Integer::BASE;
+
+class Montgomery
+{
+private:
+    Integer mod;
+    Integer Mod;
+
+public:
+    ~Montgomery() {}
+    Montgomery(const Integer &m)
+    {
+        mod = m;
+    }
+};
+
 Integer pi_generator(hint::UINT_32 n)
 {
     n += 5;
