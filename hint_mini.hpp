@@ -213,6 +213,7 @@ namespace hint_arithm
         {
             borrow += (static_cast<INT_64>(in1[pos]) - in2[pos]);
             out[pos] = borrow < 0 ? borrow + BASE : borrow;
+            ;
             borrow = borrow < 0 ? -1 : 0;
             pos++;
         }
@@ -565,7 +566,7 @@ namespace hint_arithm
     {
         len1 = ary_true_len(in1, len1);
         len2 = ary_true_len(in2, len2);
-        if (len1 + len2 <= 48 || len1 * len2 < (len1 + len2) * std::log2(len1 + len2))
+        if (len1 + len2 <= 48 || len1 * len2 < (len1 + len2) * hint_log2(len1 + len2))
         {
             normal_mul<BASE>(in1, in2, out, len1, len2);
         }
@@ -609,7 +610,7 @@ namespace hint_arithm
     constexpr void abs_mul_balance(const T in1[], const T in2[], T out[],
                                    size_t len1, size_t len2)
     {
-        if (len1 + len2 <= 48 || len1 * len2 < (len1 + len2) * std::log2(len1 + len2))
+        if (len1 + len2 <= 48 || len1 * len2 < (len1 + len2) * hint_log2(len1 + len2))
         {
             normal_mul<BASE>(in1, in2, out, len1, len2);
             return;
@@ -619,23 +620,25 @@ namespace hint_arithm
             std::swap(in1, in2);
             std::swap(len1, len2);
         }
-        size_t count = (len1 + len2 - 1) / len2;
-        size_t block_size = len1 / count;
-        size_t len = len1 + block_size - count * block_size;
-        if (len > 0)
+        // 长度差距小时直接调用乘法
+        if (len1 - len2 <= len2 / 2)
         {
-            abs_mul<BASE>(in1, in2, out, len, len2);
-        }
-        if (len == len1)
-        {
+            abs_mul<BASE>(in1, in2, out, len1, len2);
             return;
         }
+        size_t count = (len1 + len2 - 1) / len2;             // in1可以分成count个与in2相似的子数组
+        size_t block_size = len1 / count;                    // 每个子数组的长度
+        size_t len = len1 + block_size - count * block_size; // len1无法整除len2时len为len1除以len2的余数加block_size
+
+        abs_mul<BASE>(in1, in2, out, len, len2);
+
         hintvector<T> prod(block_size + len2, 0);
         size_t mul_len = len + len2;
         while (len + block_size < len1)
         {
             abs_mul<BASE>(in1 + len, in2, prod.data(), block_size, len2);
             abs_add<BASE>(out + len, prod.data(), out + len, mul_len - block_size, block_size + len2);
+            prod.clear();
             mul_len = block_size + len2;
             len += block_size;
         }
@@ -750,8 +753,6 @@ namespace hint_arithm
         const UINT_64 divisor_2digits = BASE * divisor[len2 - 1] + divisor[len2 - 2];
 
         hintvector<T> sub(len2 + 1);
-        sub.change_length(len2 + 1);
-
         // 被除数(余数大于等于除数则继续减)
         while (abs_compare(dividend, divisor, len1, len2) >= 0)
         {
@@ -760,7 +761,7 @@ namespace hint_arithm
             T quo_digit = 0;
             size_t shift = len1 - len2;
             // 被除数前两位大于等于除数前两位试商的结果偏差不大于1
-            if (dividend_2digits >= divisor_2digits)
+            if (dividend_2digits > divisor_2digits)
             {
                 quo_digit = dividend_2digits / divisor_2digits;
                 abs_mul_num<BASE>(divisor, quo_digit, sub.data(), len2);
@@ -770,6 +771,22 @@ namespace hint_arithm
                 {
                     quo_digit--;
                     abs_sub<BASE>(sub.data(), divisor, sub.data(), sub_len, len2);
+                }
+            }
+            else if (dividend_2digits == divisor_2digits)
+            {
+
+                if (abs_compare(dividend + shift, divisor, len1 - shift, len2) < 0)
+                {
+                    quo_digit = BASE - 1;
+                    shift--;
+                    abs_mul_num<BASE>(divisor, quo_digit, sub.data(), len2);
+                }
+                else
+                {
+                    quo_digit = 1;
+                    ary_copy(sub.data(), divisor, len2);
+                    sub.set_true_len();
                 }
             }
             else
@@ -795,7 +812,7 @@ namespace hint_arithm
                     }
                 }
             }
-            abs_sub<BASE>(dividend + shift, sub.data(), dividend + shift, len1, sub.length());
+            abs_sub<BASE>(dividend + shift, sub.data(), dividend + shift, len1 - shift, sub.length());
             len1 = ary_true_len(dividend, len1);
             quot[shift] = quo_digit;
         }
@@ -807,7 +824,6 @@ namespace hint_arithm
     {
         len1 = ary_true_len(dividend, len1);
         len2 = ary_true_len(divisor, len2);
-
         if (divisor == nullptr || len2 == 0)
         {
             throw("Can't divide by zero\n");
@@ -854,13 +870,11 @@ namespace hint_arithm
 
             constexpr T ONE[1] = {1};
             quot_len = quot.set_true_len();
-            hintvector<T> prod(base_len + quot_len);
-            prod.change_length(base_len + quot_len);
+            hintvector<T> prod(base_len + quot_len, 0);
             // 用除数的低base_len位乘以刚刚试出来的商,而后与余数比较,必须满足quot*(divisor%(base^base_len))<=dividend
-            abs_mul<BASE>(divisor, quot.data(), prod.data(), base_len, quot_len);
+            abs_mul_balance<BASE>(divisor, quot.data(), prod.data(), base_len, quot_len);
             size_t prod_len = prod.set_true_len();
             len1 = ary_true_len(dividend, len1);
-
             while (abs_compare(prod.data(), dividend, prod_len, len1) > 0)
             {
                 abs_sub<BASE>(quot.data(), ONE, quot.data(), quot_len, 1);
@@ -890,6 +904,7 @@ namespace hint_arithm
         abs_mul_num<BASE>(dividend, multiplier, dividend_ptr, len1);        // 被除数规则化
         len1 = normalized_dividend.set_true_len();
         quot = hintvector<T>(len1 - len2 + 2, 0);
+
         if ((!ret_rem) && (len1 + 2 < len2 * 2))
         {
             // 除数过长时可以截取一部分不参与计算
@@ -1076,7 +1091,7 @@ public:
     Integer(T input)
     {
         bool is_neg = hint::is_neg(input);
-        hint::UINT_64 tmp = std::abs<hint::INT_64>(input);
+        hint::UINT_64 tmp = std::abs(static_cast<hint::INT_64>(input));
         size_t digits = std::ceil(std::log10(tmp + 1));
         size_t len = (digits + DIGIT - 1) / DIGIT;
         data = DataVec(len);
@@ -1130,11 +1145,13 @@ public:
     Integer &operator=(T input)
     {
         bool is_neg = hint::is_neg(input);
-        hint::UINT_64 tmp = std::abs<hint::INT_64>(input);
+        hint::UINT_64 tmp = std::abs(static_cast<hint::INT_64>(input));
         size_t digits = std::ceil(std::log10(tmp + 1));
         size_t len = (digits + DIGIT - 1) / DIGIT;
         data = DataVec(len);
         data.change_length(len);
+        std::cout << len << "\n";
+        std::cout << input << "\n";
         for (size_t i = 0; i < len; i++)
         {
             std::tie(tmp, data[i]) = hint::div_mod(tmp, BASE);
@@ -1458,7 +1475,37 @@ public:
         result.change_sign(is_neg() != input.is_neg());
         return result;
     }
-
+    static Integer power_of_base(size_t n)
+    {
+        Integer result;
+        result.data = DataVec(n + 1, 0);
+        result.data[n] = 1;
+        return result;
+    }
+    Integer mod_power_of_base(size_t n) const
+    {
+        size_t len = length();
+        if (len <= n)
+        {
+            return *this;
+        }
+        Integer result;
+        result.data = DataVec(data.data(), n);
+        result.data.set_true_len();
+        return result;
+    }
+    Integer div_power_of_base(size_t n) const
+    {
+        size_t len = length();
+        if (len <= n)
+        {
+            return Integer();
+        }
+        Integer result;
+        result.data = DataVec(data.data() + n, len - n);
+        result.data.set_true_len();
+        return result;
+    }
     Integer power(uint64_t n) const
     {
         Integer result = 1;
@@ -1494,17 +1541,92 @@ public:
 constexpr hint::UINT_32 Integer::DIGIT;
 constexpr hint::UINT_64 Integer::BASE;
 
+std::pair<Integer, Integer> exgcd(Integer a, Integer b)
+{
+    if (a < b)
+    {
+        Integer x, y;
+        std::tie(x, y) = exgcd(b, a);
+        return std::make_pair(y, x);
+    }
+    Integer x = 1, x0 = 0;
+    Integer y = 0, y0 = 1;
+    Integer k;
+
+    while (b > 0)
+    {
+        k = a / b;
+        std::swap(a, b);
+        b = b - k * a;
+        std::swap(x, x0);
+        x0 = x0 - k * x;
+        std::swap(y, y0);
+        y0 = y0 - k * y;
+    }
+    return std::make_pair(x, y);
+}
+
+Integer mod_inv(const Integer &n, const Integer &mod)
+{
+    auto x_y = exgcd(n, mod);
+    if (x_y.first < 0)
+    {
+        return x_y.first + mod;
+    }
+    return x_y.first;
+}
+
 class Montgomery
 {
 private:
-    Integer mod;
-    Integer Mod;
+    size_t R_digit = 0; // R的位数
+    Integer Mod;        // 模数
+    Integer R;
+    Integer N1; // Mod模R的逆元,在模R下的相反数
+    Integer R1; // R模MOD
+    Integer R2; // R^2模MOD
 
 public:
     ~Montgomery() {}
     Montgomery(const Integer &m)
     {
-        mod = m;
+        Mod = m;
+        R_digit = Mod.length() * 2;
+        R = Integer::power_of_base(R_digit);
+        R1 = R % Mod;
+        R2 = R1 * R1 % Mod;
+        Integer N_inv = mod_inv(Mod, R);
+        N1 = R - N_inv;
+    }
+    Integer mod_R(const Integer &n) const
+    {
+        return n.mod_power_of_base(R_digit);
+    }
+    Integer div_R(const Integer &n) const
+    {
+        return n.div_power_of_base(R_digit);
+    }
+    Integer redc(const Integer &n) const
+    {
+        // assert(n <= (R * Mod - Integer(1)));
+        Integer m = mod_R(n) * N1;
+        m = mod_R(m);
+        m = div_R(n + m * Mod);
+        if (m >= Mod)
+        {
+            return m - Mod;
+        }
+        return m;
+    }
+    Integer mod(const Integer &n) const
+    {
+        return redc(n * R1);
+    }
+    Integer mul_mod(const Integer &a, const Integer &b) const
+    {
+        Integer ar = redc(a * R2);
+        Integer br = redc(b * R2);
+        return redc(redc(ar * br));
     }
 };
 

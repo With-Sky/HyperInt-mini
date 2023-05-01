@@ -16,7 +16,7 @@
 #define HINT_MATH_HPP
 #define MULTITHREAD 0   // 多线程 0 means no, 1 means yes
 #define TABLE_TYPE 1    // 复数表的类型 0 means ComplexTable, 1 means ComplexTableX
-#define TABLE_PRELOAD 0 // 是否提前初始化表 0 means no, 1 means yes
+#define TABLE_PRELOAD 1 // 是否提前初始化表 0 means no, 1 means yes
 
 namespace hint
 {
@@ -28,7 +28,8 @@ namespace hint
     using INT_64 = int64_t;
     using ULONG = unsigned long;
     using LONG = long;
-    using Complex = std::complex<double>;
+    using HintFloat = double;
+    using Complex = std::complex<HintFloat>;
 
     constexpr UINT_64 HINT_CHAR_BIT = 8;
     constexpr UINT_64 HINT_SHORT_BIT = 16;
@@ -46,9 +47,9 @@ namespace hint
     constexpr UINT_64 HINT_INT64_0X7F = INT64_MAX;
     constexpr UINT_64 HINT_INT64_0XFF = UINT64_MAX;
 
-    constexpr double HINT_PI = 3.1415926535897932384626433832795;
-    constexpr double HINT_2PI = HINT_PI * 2;
-    constexpr double HINT_HSQ_ROOT2 = 0.70710678118654752440084436210485;
+    constexpr HintFloat HINT_PI = 3.1415926535897932384626433832795;
+    constexpr HintFloat HINT_2PI = HINT_PI * 2;
+    constexpr HintFloat HINT_HSQ_ROOT2 = 0.70710678118654752440084436210485;
 
     constexpr UINT_64 NTT_MOD1 = 3221225473;
     constexpr UINT_64 NTT_ROOT1 = 5;
@@ -62,7 +63,7 @@ namespace hint
     constexpr UINT_64 NTT_ROOT4 = 3;
     constexpr size_t NTT_MAX_LEN2 = 1ull << 43;
 
-    double cas(double x)
+    HintFloat cas(HintFloat x)
     {
         return std::cos(x) + std::sin(x);
     }
@@ -560,8 +561,8 @@ namespace hint
                         }
                         for (size_t pos = 1; pos < vec_size / 2; pos += 2)
                         {
-                            double cos_theta = std::cos(HINT_2PI * pos / len);
-                            double sin_theta = std::sin(HINT_2PI * pos / len);
+                            HintFloat cos_theta = std::cos(HINT_2PI * pos / len);
+                            HintFloat sin_theta = std::sin(HINT_2PI * pos / len);
                             table[vec_size + pos] = Complex(cos_theta, sin_theta);
                             table[vec_size * 2 - pos] = Complex(sin_theta, cos_theta);
                         }
@@ -570,9 +571,9 @@ namespace hint
                     cur_log_size = std::max(cur_log_size, shift);
                 }
                 // 返回单位圆上辐角为theta的点
-                static Complex unit_root(double theta)
+                static Complex unit_root(HintFloat theta)
                 {
-                    return std::polar<double>(1.0, theta);
+                    return std::polar<HintFloat>(1.0, theta);
                 }
                 // 返回单位圆上平分m份的第n个
                 static Complex unit_root(size_t m, size_t n)
@@ -662,8 +663,8 @@ namespace hint
                         }
                         for (size_t pos = 1; pos < len / 8; pos += 2)
                         {
-                            double cos_theta = std::cos(HINT_2PI * pos / len);
-                            double sin_theta = std::sin(HINT_2PI * pos / len);
+                            HintFloat cos_theta = std::cos(HINT_2PI * pos / len);
+                            HintFloat sin_theta = std::sin(HINT_2PI * pos / len);
                             Complex tmp1(cos_theta, -sin_theta);
                             Complex tmp2(sin_theta, -cos_theta);
 
@@ -682,9 +683,9 @@ namespace hint
                     cur_log_size = std::max(cur_log_size, shift);
                 }
                 // 返回单位圆上辐角为theta的点
-                static Complex unit_root(double theta)
+                static Complex unit_root(HintFloat theta)
                 {
-                    return std::polar<double>(1.0, theta);
+                    return std::polar<HintFloat>(1.0, theta);
                 }
                 // 返回单位圆上平分m份的第n个
                 static Complex unit_root(size_t m, size_t n)
@@ -769,7 +770,7 @@ namespace hint
                 fft_2point(tmp1, tmp3);
                 fft_2point(tmp4, tmp6);
                 fft_2point(tmp5, tmp7);
-                static constexpr double cos_1_8 = 0.70710678118654752440084436210485;
+                static constexpr HintFloat cos_1_8 = 0.70710678118654752440084436210485;
                 tmp5 = cos_1_8 * Complex(tmp5.imag() + tmp5.real(), tmp5.imag() - tmp5.real());
                 tmp6 = Complex(tmp6.imag(), -tmp6.real());
                 tmp7 = -cos_1_8 * Complex(tmp7.real() - tmp7.imag(), tmp7.real() + tmp7.imag());
@@ -785,9 +786,9 @@ namespace hint
             }
             inline void fft_dit_16point(Complex *input, size_t rank = 1)
             {
-                static constexpr double cos_1_8 = 0.70710678118654752440084436210485;
-                static constexpr double cos_1_16 = 0.92387953251128675612818318939679;
-                static constexpr double sin_1_16 = 0.3826834323650897717284599840304;
+                static constexpr HintFloat cos_1_8 = 0.70710678118654752440084436210485;
+                static constexpr HintFloat cos_1_16 = 0.92387953251128675612818318939679;
+                static constexpr HintFloat sin_1_16 = 0.3826834323650897717284599840304;
                 static constexpr Complex w1(cos_1_16, -sin_1_16), w3(sin_1_16, -cos_1_16);
                 static constexpr Complex w5(-sin_1_16, -cos_1_16), w7(-cos_1_16, -sin_1_16);
 
@@ -835,13 +836,13 @@ namespace hint
             }
             inline void fft_dit_32point(Complex *input, size_t rank = 1)
             {
-                static constexpr double cos_1_8 = 0.70710678118654752440084436210485;
-                static constexpr double cos_1_16 = 0.92387953251128675612818318939679;
-                static constexpr double sin_1_16 = 0.3826834323650897717284599840304;
-                static constexpr double cos_1_32 = 0.98078528040323044912618223613424;
-                static constexpr double sin_1_32 = 0.19509032201612826784828486847702;
-                static constexpr double cos_3_32 = 0.83146961230254523707878837761791;
-                static constexpr double sin_3_32 = 0.55557023301960222474283081394853;
+                static constexpr HintFloat cos_1_8 = 0.70710678118654752440084436210485;
+                static constexpr HintFloat cos_1_16 = 0.92387953251128675612818318939679;
+                static constexpr HintFloat sin_1_16 = 0.3826834323650897717284599840304;
+                static constexpr HintFloat cos_1_32 = 0.98078528040323044912618223613424;
+                static constexpr HintFloat sin_1_32 = 0.19509032201612826784828486847702;
+                static constexpr HintFloat cos_3_32 = 0.83146961230254523707878837761791;
+                static constexpr HintFloat sin_3_32 = 0.55557023301960222474283081394853;
                 static constexpr Complex w1(cos_1_32, -sin_1_32), w2(cos_1_16, -sin_1_16), w3(cos_3_32, -sin_3_32);
                 static constexpr Complex w5(sin_3_32, -cos_3_32), w6(sin_1_16, -cos_1_16), w7(sin_1_32, -cos_1_32);
                 static constexpr Complex w9(-sin_1_32, -cos_1_32), w10(-sin_1_16, -cos_1_16), w11(-sin_3_32, -cos_3_32);
@@ -957,7 +958,7 @@ namespace hint
                 fft_2point(tmp1, tmp5);
                 fft_2point(tmp2, tmp6);
                 fft_2point(tmp3, tmp7);
-                static constexpr double cos_1_8 = 0.70710678118654752440084436210485;
+                static constexpr HintFloat cos_1_8 = 0.70710678118654752440084436210485;
                 tmp5 = cos_1_8 * Complex(tmp5.imag() + tmp5.real(), tmp5.imag() - tmp5.real());
                 tmp6 = Complex(tmp6.imag(), -tmp6.real());
                 tmp7 = -cos_1_8 * Complex(tmp7.real() - tmp7.imag(), tmp7.real() + tmp7.imag());
@@ -980,9 +981,9 @@ namespace hint
             }
             inline void fft_dif_16point(Complex *input, size_t rank = 1)
             {
-                static constexpr double cos_1_8 = 0.70710678118654752440084436210485;
-                static constexpr double cos_1_16 = 0.92387953251128675612818318939679;
-                static constexpr double sin_1_16 = 0.3826834323650897717284599840304;
+                static constexpr HintFloat cos_1_8 = 0.70710678118654752440084436210485;
+                static constexpr HintFloat cos_1_16 = 0.92387953251128675612818318939679;
+                static constexpr HintFloat sin_1_16 = 0.3826834323650897717284599840304;
                 static constexpr Complex w1(cos_1_16, -sin_1_16), w3(sin_1_16, -cos_1_16);
                 static constexpr Complex w5(-sin_1_16, -cos_1_16), w7(-cos_1_16, -sin_1_16);
 
@@ -1033,13 +1034,13 @@ namespace hint
             }
             inline void fft_dif_32point(Complex *input, size_t rank = 1)
             {
-                static constexpr double cos_1_8 = 0.70710678118654752440084436210485;
-                static constexpr double cos_1_16 = 0.92387953251128675612818318939679;
-                static constexpr double sin_1_16 = 0.3826834323650897717284599840304;
-                static constexpr double cos_1_32 = 0.98078528040323044912618223613424;
-                static constexpr double sin_1_32 = 0.19509032201612826784828486847702;
-                static constexpr double cos_3_32 = 0.83146961230254523707878837761791;
-                static constexpr double sin_3_32 = 0.55557023301960222474283081394853;
+                static constexpr HintFloat cos_1_8 = 0.70710678118654752440084436210485;
+                static constexpr HintFloat cos_1_16 = 0.92387953251128675612818318939679;
+                static constexpr HintFloat sin_1_16 = 0.3826834323650897717284599840304;
+                static constexpr HintFloat cos_1_32 = 0.98078528040323044912618223613424;
+                static constexpr HintFloat sin_1_32 = 0.19509032201612826784828486847702;
+                static constexpr HintFloat cos_3_32 = 0.83146961230254523707878837761791;
+                static constexpr HintFloat sin_3_32 = 0.55557023301960222474283081394853;
                 static constexpr Complex w1(cos_1_32, -sin_1_32), w2(cos_1_16, -sin_1_16), w3(cos_3_32, -sin_3_32);
                 static constexpr Complex w5(sin_3_32, -cos_3_32), w6(sin_1_16, -cos_1_16), w7(sin_1_32, -cos_1_32);
                 static constexpr Complex w9(-sin_1_32, -cos_1_32), w10(-sin_1_16, -cos_1_16), w11(-sin_3_32, -cos_3_32);
@@ -1217,7 +1218,7 @@ namespace hint
                 input[rank * 3] = (tmp2 - tmp3) * omega_cube;
             }
             // 求共轭复数及归一化，逆变换用
-            inline void fft_conj(Complex *input, size_t fft_len, double div = 1)
+            inline void fft_conj(Complex *input, size_t fft_len, HintFloat div = 1)
             {
                 for (size_t i = 0; i < fft_len; i++)
                 {
@@ -1227,7 +1228,7 @@ namespace hint
             // 归一化,逆变换用
             inline void fft_normalize(Complex *input, size_t fft_len)
             {
-                double len = static_cast<double>(fft_len);
+                HintFloat len = static_cast<HintFloat>(fft_len);
                 for (size_t i = 0; i < fft_len; i++)
                 {
                     input[i] /= len;
@@ -1242,7 +1243,7 @@ namespace hint
                 {
                     // rank表示上一级fft的长度,gap表示由两个上一级可以迭代计算出这一级的长度
                     size_t gap = rank * 2;
-                    Complex unit_omega = std::polar<double>(1, -HINT_2PI / gap);
+                    Complex unit_omega = std::polar<HintFloat>(1, -HINT_2PI / gap);
                     for (size_t begin = 0; begin < fft_len; begin += gap)
                     {
                         Complex omega = Complex(1, 0);
@@ -1268,9 +1269,9 @@ namespace hint
                 {
                     // rank表示上一级fft的长度,gap表示由四个上一级可以迭代计算出这一级的长度
                     size_t gap = rank * 4;
-                    Complex unit_omega = std::polar<double>(1, -HINT_2PI / gap);
-                    Complex unit_sqr = std::polar<double>(1, -HINT_2PI * 2 / gap);
-                    Complex unit_cube = std::polar<double>(1, -HINT_2PI * 3 / gap);
+                    Complex unit_omega = std::polar<HintFloat>(1, -HINT_2PI / gap);
+                    Complex unit_sqr = std::polar<HintFloat>(1, -HINT_2PI * 2 / gap);
+                    Complex unit_cube = std::polar<HintFloat>(1, -HINT_2PI * 3 / gap);
                     for (size_t begin = 0; begin < fft_len; begin += gap)
                     {
                         fft_4point(input + begin, rank);
@@ -1659,7 +1660,7 @@ namespace hint
             /// @param input 浮点数组指针
             /// @param fht_len 变换的长度
             /// @param is_ifht 是否为逆变换
-            void fht(double *input, size_t fht_len)
+            void fht(HintFloat *input, size_t fht_len)
             {
                 fht_len = max_2pow(fht_len);
                 if (fht_len <= 1)
@@ -1671,8 +1672,8 @@ namespace hint
                 binary_reverse_swap(input, fht_len);
                 for (size_t i = 0; i < fht_len; i += 2)
                 {
-                    double tmp1 = input[i];
-                    double tmp2 = input[i + 1];
+                    HintFloat tmp1 = input[i];
+                    HintFloat tmp2 = input[i + 1];
                     input[i] = tmp1 + tmp2;
                     input[i + 1] = tmp1 - tmp2;
                 }
@@ -1685,8 +1686,8 @@ namespace hint
                     {
                         size_t index1 = begin, index2 = begin + half;
                         size_t index3 = begin + rank, index4 = begin + half * 3;
-                        double tmp1 = input[index1];
-                        double tmp2 = input[index3];
+                        HintFloat tmp1 = input[index1];
+                        HintFloat tmp2 = input[index3];
                         input[index1] = tmp1 + tmp2;
                         input[index3] = tmp1 - tmp2;
                         tmp1 = input[index2];
@@ -1700,14 +1701,14 @@ namespace hint
                             index3 = rank + begin + pos;
                             index4 = gap + begin - pos;
 
-                            double tmp1 = input[index1];
-                            double tmp2 = input[index2];
-                            double tmp3 = input[index3];
-                            double tmp4 = input[index4];
+                            HintFloat tmp1 = input[index1];
+                            HintFloat tmp2 = input[index2];
+                            HintFloat tmp3 = input[index3];
+                            HintFloat tmp4 = input[index4];
 
                             Complex omega = std::conj(hint_fft::TABLE.get_omega(shift, pos));
-                            double t1 = tmp3 * omega.real() + tmp4 * omega.imag();
-                            double t2 = tmp3 * omega.imag() - tmp4 * omega.real();
+                            HintFloat t1 = tmp3 * omega.real() + tmp4 * omega.imag();
+                            HintFloat t2 = tmp3 * omega.imag() - tmp4 * omega.real();
 
                             input[index1] = tmp1 + t1;
                             input[index2] = tmp2 + t2;
@@ -1718,11 +1719,11 @@ namespace hint
                     shift++;
                 }
             }
-            void ifht(double *input, size_t fht_len)
+            void ifht(HintFloat *input, size_t fht_len)
             {
                 fht_len = max_2pow(fht_len);
                 fht(input, fht_len);
-                double len = fht_len;
+                HintFloat len = fht_len;
                 for (size_t i = 0; i < fht_len; i++)
                 {
                     input[i] /= len;
@@ -2450,7 +2451,7 @@ namespace hint
         {
             hint_transform::fft_dif(fft_ary2, fft_len, false);
         }
-        double inv = 1.0 / fft_len;
+        HintFloat inv = 1.0 / fft_len;
         for (size_t i = 0; i < fft_len; i++)
         {
             out[i] = std::conj(fft_ary1[i] * fft_ary2[i]) * inv;
@@ -2461,7 +2462,7 @@ namespace hint
             out[i] = std::conj(out[i]);
         }
     }
-    void fht_convolution(double fht_ary1[], double fht_ary2[], double out[], size_t fht_len)
+    void fht_convolution(HintFloat fht_ary1[], HintFloat fht_ary2[], HintFloat out[], size_t fht_len)
     {
         hint_transform::fht(fht_ary1, fht_len);
         if (fht_ary1 != fht_ary2)
@@ -2471,7 +2472,7 @@ namespace hint
         out[0] = fht_ary1[0] * fht_ary2[0];
         for (size_t i = 1; i < fht_len; ++i)
         {
-            double tmp1 = fht_ary1[i], tmp2 = fht_ary1[fht_len - i];
+            HintFloat tmp1 = fht_ary1[i], tmp2 = fht_ary1[fht_len - i];
             out[i] = (fht_ary2[i] * (tmp1 + tmp2) + fht_ary2[fht_len - i] * (tmp1 - tmp2)) / 2;
         }
         hint_transform::ifht(out, fht_len);
