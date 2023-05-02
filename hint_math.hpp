@@ -340,7 +340,8 @@ namespace hint
         {
             throw("Ary too long\n");
         }
-        std::memcpy(target, source, len * sizeof(T));
+        // std::memcpy(target, source, len * sizeof(T));
+        std::copy(source, source + len, target);
     }
     // 模板数组拷贝
     template <typename T1, typename T2>
@@ -2413,18 +2414,19 @@ namespace hint
                 {
                     ntt_split_radix_dif(input, ntt_len);
                 }
+                using intt = NTT<mod(), iroot()>;
             };
             using ntt1 = NTT<NTT_MOD1, NTT_ROOT1>;
-            using intt1 = NTT<ntt1::mod(), ntt1::iroot()>;
+            using intt1 = ntt1::intt;
 
             using ntt2 = NTT<NTT_MOD2, NTT_ROOT2>;
-            using intt2 = NTT<ntt2::mod(), ntt2::iroot()>;
+            using intt2 = ntt2::intt;
 
             using ntt3 = NTT<NTT_MOD3, NTT_ROOT3>;
-            using intt3 = NTT<ntt3::mod(), ntt3::iroot()>;
+            using intt3 = ntt3::intt;
 
             using ntt4 = NTT<NTT_MOD4, NTT_ROOT4>;
-            using intt4 = NTT<ntt4::mod(), ntt4::iroot()>;
+            using intt4 = ntt4::intt;
         }
         using namespace hint_fft;
         using namespace hint_fht;
