@@ -1462,34 +1462,34 @@ namespace hint
             template <size_t LEN = 1>
             void fft_split_radix_dit_template_alt(Complex *input, size_t fft_len)
             {
-                if (fft_len > LEN)
+                if (fft_len < LEN)
                 {
-                    fft_split_radix_dit_template_alt<LEN * 2>(input, fft_len);
+                    fft_split_radix_dit_template_alt<LEN / 2>(input, fft_len);
                     return;
                 }
                 TABLE.expand(hint_log2(LEN));
                 fft_split_radix_dit_template<LEN>(input);
             }
             template <>
-            void fft_split_radix_dit_template_alt<1 << 24>(Complex *input, size_t fft_len) {}
+            void fft_split_radix_dit_template_alt<0>(Complex *input, size_t fft_len) {}
 
             // 辅助选择函数
             template <size_t LEN = 1>
             void fft_split_radix_dif_template_alt(Complex *input, size_t fft_len)
             {
-                if (fft_len > LEN)
+                if (fft_len < LEN)
                 {
-                    fft_split_radix_dif_template_alt<LEN * 2>(input, fft_len);
+                    fft_split_radix_dif_template_alt<LEN / 2>(input, fft_len);
                     return;
                 }
                 TABLE.expand(hint_log2(LEN));
                 fft_split_radix_dif_template<LEN>(input);
             }
             template <>
-            void fft_split_radix_dif_template_alt<1 << 24>(Complex *input, size_t fft_len) {}
+            void fft_split_radix_dif_template_alt<0>(Complex *input, size_t fft_len) {}
 
-            auto fft_split_radix_dit = fft_split_radix_dit_template_alt<1>;
-            auto fft_split_radix_dif = fft_split_radix_dif_template_alt<1>;
+            auto fft_split_radix_dit = fft_split_radix_dit_template_alt<size_t(1) << lut_max_rank>;
+            auto fft_split_radix_dif = fft_split_radix_dif_template_alt<size_t(1) << lut_max_rank>;
 
             /// @brief 时间抽取基2fft
             /// @param input 复数组
@@ -1552,6 +1552,11 @@ namespace hint
 #if MULTITHREAD == 1
             void fft_dit_2ths(Complex *input, size_t fft_len)
             {
+                if (fft_len <= 8)
+                {
+                    fft_dit(input, fft_len);
+                    return;
+                }
                 const size_t half_len = fft_len / 2;
                 const INT_32 log_len = hint_log2(fft_len);
                 TABLE.expand(log_len);
@@ -1572,6 +1577,11 @@ namespace hint
             }
             void fft_dif_2ths(Complex *input, size_t fft_len)
             {
+                if (fft_len <= 8)
+                {
+                    fft_dif(input, fft_len);
+                    return;
+                }
                 const size_t half_len = fft_len / 2;
                 const INT_32 log_len = hint_log2(fft_len);
                 TABLE.expand(log_len);
@@ -1592,6 +1602,11 @@ namespace hint
             }
             void fft_dit_4ths(Complex *input, size_t fft_len)
             {
+                if (fft_len <= 8)
+                {
+                    fft_dit(input, fft_len);
+                    return;
+                }
                 const size_t half_len = fft_len / 2;
                 const INT_32 log_len = hint_log2(fft_len);
                 TABLE.expand(log_len);
@@ -1618,6 +1633,11 @@ namespace hint
             }
             void fft_dif_4ths(Complex *input, size_t fft_len)
             {
+                if (fft_len <= 8)
+                {
+                    fft_dif(input, fft_len);
+                    return;
+                }
                 const size_t half_len = fft_len / 2;
                 const INT_32 log_len = hint_log2(fft_len);
                 TABLE.expand(log_len);
@@ -2244,9 +2264,9 @@ namespace hint
                 template <typename T>
                 static constexpr void ntt_dit_template(T input[], size_t ntt_len)
                 {
-                    if (ntt_len > LEN)
+                    if (ntt_len < LEN)
                     {
-                        NTT_ALT<LEN * 2, MOD, ROOT>::ntt_dit_template(input, ntt_len);
+                        NTT_ALT<LEN / 2, MOD, ROOT>::ntt_dit_template(input, ntt_len);
                         return;
                     }
                     SPLIT_RADIX_NTT<LEN, MOD, ROOT>::ntt_split_radix_dit_template(input);
@@ -2254,23 +2274,24 @@ namespace hint
                 template <typename T>
                 static constexpr void ntt_dif_template(T input[], size_t ntt_len)
                 {
-                    if (ntt_len > LEN)
+                    if (ntt_len < LEN)
                     {
-                        NTT_ALT<LEN * 2, MOD, ROOT>::ntt_dif_template(input, ntt_len);
+                        NTT_ALT<LEN / 2, MOD, ROOT>::ntt_dif_template(input, ntt_len);
                         return;
                     }
                     SPLIT_RADIX_NTT<LEN, MOD, ROOT>::ntt_split_radix_dif_template(input);
                 }
             };
             template <UINT_64 MOD, UINT_64 ROOT>
-            struct NTT_ALT<size_t(1) << 43, MOD, ROOT>
+            struct NTT_ALT<0, MOD, ROOT>
             {
                 template <typename T>
                 static constexpr void ntt_dit_template(T input[], size_t ntt_len) {}
                 template <typename T>
                 static constexpr void ntt_dif_template(T input[], size_t ntt_len) {}
             };
-            template <UINT_64 MOD, UINT_64 ROOT>
+            // 快速数论变换主类
+            template <UINT_64 MOD, UINT_64 ROOT, size_t MAX_LEN = 1 << 23>
             struct NTT
             {
                 using ntt_basic = NTT_BASIC<MOD, ROOT>;
@@ -2293,7 +2314,7 @@ namespace hint
                 static void ntt_radix2_dit(T *input, size_t ntt_len, bool bit_rev = true)
                 {
                     ntt_len = max_2pow(ntt_len);
-                    if (ntt_len <= 1)
+                    if (ntt_len <= 1 || ntt_len > MAX_LEN)
                     {
                         return;
                     }
@@ -2340,7 +2361,7 @@ namespace hint
                 static void ntt_radix2_dif(T *input, size_t ntt_len, bool bit_rev = true)
                 {
                     ntt_len = max_2pow(ntt_len);
-                    if (ntt_len <= 1)
+                    if (ntt_len <= 1 || ntt_len > MAX_LEN)
                     {
                         return;
                     }
@@ -2386,12 +2407,12 @@ namespace hint
                 template <typename T>
                 static constexpr void ntt_split_radix_dit(T input[], size_t ntt_len)
                 {
-                    NTT_ALT<1, MOD, ROOT>::ntt_dit_template(input, ntt_len);
+                    NTT_ALT<MAX_LEN, MOD, ROOT>::ntt_dit_template(input, ntt_len);
                 }
                 template <typename T>
                 static constexpr void ntt_split_radix_dif(T input[], size_t ntt_len)
                 {
-                    NTT_ALT<1, MOD, ROOT>::ntt_dif_template(input, ntt_len);
+                    NTT_ALT<MAX_LEN, MOD, ROOT>::ntt_dif_template(input, ntt_len);
                 }
                 template <typename T>
                 static constexpr void ntt_dit(T input[], size_t ntt_len)
@@ -2403,18 +2424,18 @@ namespace hint
                 {
                     ntt_split_radix_dif(input, ntt_len);
                 }
-                using intt = NTT<mod(), iroot()>;
+                using intt = NTT<mod(), iroot(), MAX_LEN>;
             };
-            using ntt1 = NTT<NTT_MOD1, NTT_ROOT1>;
+            using ntt1 = NTT<NTT_MOD1, NTT_ROOT1, size_t(1) << 30>;
             using intt1 = ntt1::intt;
 
-            using ntt2 = NTT<NTT_MOD2, NTT_ROOT2>;
+            using ntt2 = NTT<NTT_MOD2, NTT_ROOT2, size_t(1) << 28>;
             using intt2 = ntt2::intt;
 
-            using ntt3 = NTT<NTT_MOD3, NTT_ROOT3>;
+            using ntt3 = NTT<NTT_MOD3, NTT_ROOT3, size_t(1) << 43>;
             using intt3 = ntt3::intt;
 
-            using ntt4 = NTT<NTT_MOD4, NTT_ROOT4>;
+            using ntt4 = NTT<NTT_MOD4, NTT_ROOT4, size_t(1) << 43>;
             using intt4 = ntt4::intt;
         }
         using namespace hint_fft;

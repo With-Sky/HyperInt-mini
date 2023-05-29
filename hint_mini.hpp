@@ -117,6 +117,17 @@ namespace hint_arithm
     constexpr void ary_lshift(const T in[], T out[], size_t len)
     {
     }
+    template <typename T1, typename T2>
+    constexpr UINT_64 poly_to_number(const T1 &poly, const T2 &num, size_t len, UINT_64 BASE)
+    {
+        UINT_64 carry = 0;
+        for (size_t i = 0; i < len; i++)
+        {
+            carry += poly[i];
+            std::tie(carry, num[i]) = div_mod<UINT_64>(carry, BASE);
+        }
+        return carry;
+    }
     // 高精度绝对值比较,前者大于后者返回1,小于返回-1等于返回0
     template <typename T>
     constexpr INT_32 abs_compare(const T ary1[], const T ary2[], size_t len1, size_t len2)
@@ -487,15 +498,13 @@ namespace hint_arithm
         }
         if (len1 + len2 - 1 <= NTT_MAX_LEN1)
         {
-            const size_t ntt_len1 = len1 * std::max<size_t>(1, sizeof(T) / sizeof(NTT_Ty));
-            const size_t ntt_len2 = len2 * std::max<size_t>(1, sizeof(T) / sizeof(NTT_Ty));
             if (in1 == in2 && len1 == len2)
             {
-                ntt_sqr<BASE, NTT_Ty>(in1, out, ntt_len1);
+                ntt_sqr<BASE>(in1, out, len1);
             }
             else
             {
-                ntt_mul<BASE, NTT_Ty>(in1, in2, out, ntt_len1, ntt_len2);
+                ntt_mul<BASE>(in1, in2, out, len1, len2);
             }
             return;
         }
@@ -931,20 +940,22 @@ namespace hint_arithm
         // // B≡2B'-AB'^2
         UINT_32 *in_ntt = new UINT_32[len * 2];
         out[0] = mod_inv(in[0], MOD);
+        using ntt = typename hint_transform::hint_ntt::NTT<MOD, ROOT>;
+        using intt = typename ntt::intt;
         for (size_t rank = 2; rank <= len; rank *= 2)
         {
             size_t gap = rank * 2;
             ary_copy(in_ntt, in, rank);
             ary_clr(in_ntt + rank, rank);
             ary_clr(out + rank / 2, gap - rank / 2);
-            hint_transform::NTT<MOD, ROOT>::ntt_dif(in_ntt, gap);
-            hint_transform::NTT<MOD, ROOT>::ntt_dif(out, gap);
+            ntt::ntt_dif(in_ntt, gap);
+            ntt::ntt_dif(out, gap);
             for (size_t i = 0; i < gap; i++)
             {
                 UINT_64 a = in_ntt[i], b = out[i];
                 out[i] = (b * 2 + MOD - (b * b % MOD) * a % MOD) % MOD;
             }
-            hint_transform::NTT<MOD, IROOT>::ntt_dit(out, gap);
+            intt::ntt_dit(out, gap);
             UINT_64 inv = mod_inv(gap, MOD);
             for (size_t i = 0; i < gap / 2; i++)
             {
@@ -952,88 +963,84 @@ namespace hint_arithm
             }
         }
     }
-    /// @brief 高精度进制转换
-    /// @tparam T
-    /// @tparam UNIT_T
-    /// @param data_ary 输入表示大整数的数组,需留有充足空间
-    /// @param BASE1 输入进制
-    /// @param BASE2 输出进制
-    template <UINT_64 BASE1 = 1 << 16, UINT_64 BASE2 = 10000, typename T>
-    void base_conversion(T data_ary[], size_t &in_len)
-    {
-        if (in_len == 0 || BASE1 == BASE2)
-        {
-            return;
-        }
-        if (in_len < 2)
-        {
-            UINT_64 tmp = data_ary[0];
-            size_t pos = 0;
-            while (tmp > 0)
-            {
-                std::tie(tmp, data_ary[pos]) = div_mod(tmp, BASE2);
-                pos++;
-            }
-            return;
-        }
-        const size_t max_rank = min_2pow(in_len) / 2;                                                      // unit_ary存储的base1的最高次幂
-        const UINT_64 base1to2_len = static_cast<UINT_64>(std::ceil(std::log2(BASE1) / std::log2(BASE2))); // base1到base2的数长度的比值
-        size_t result_len = static_cast<size_t>(max_rank * base1to2_len * 2);                              // 结果的长度
 
-        ary_clr(data_ary + in_len, result_len - in_len); // 清零
-        // 输入进制比输出进制大进行预处理
-        if (BASE1 > BASE2)
-        {
-            size_t pos = in_len;
-            while (pos > 0)
-            {
-                pos--;
-                UINT_64 tmp = data_ary[pos];
-                size_t i = 0, trans_pos = pos * base1to2_len;
-                while (tmp > 0)
-                {
-                    std::tie(tmp, data_ary[trans_pos + i]) = div_mod(tmp, BASE2);
-                    i++;
-                }
-            }
-            UINT_64 tmp = BASE2;
-            while (tmp < BASE1)
-            {
-                tmp *= BASE2;
-                if (tmp == BASE1)
-                {
-                    return;
-                }
-            }
-        }
-        size_t unit_ary_len = max_rank * base1to2_len; // unit_ary的长度max_rank
-        T *unit_ary = new T[unit_ary_len]{};           // 用一个数组存储base2进制下的(base1)^1,(base1)^2,(base1)^4...
-        UINT_64 tmp = BASE1;
-        size_t i = 0;
-        while (tmp > 0)
-        {
-            std::tie(tmp, unit_ary[i]) = div_mod(tmp, BASE2); // 将base2进制下的base1存入数组
-        }
-        T *tmp_product = new T[max_rank * base1to2_len * 2];
-        for (size_t rank = 1; rank <= max_rank; rank *= 2)
-        {
-            size_t gap = rank * 2;
-            for (size_t i = 0; i < result_len; i += gap)
-            {
-                T *work_ary = data_ary + i;
-                abs_mul(work_ary + rank, unit_ary, tmp_product, rank, rank, BASE2);
-                abs_add<false>(work_ary, tmp_product, work_ary, rank, gap, BASE2);
-            }
-            if (rank < max_rank)
-            {
-                abs_sqr(unit_ary, unit_ary, rank, BASE2);
-            }
-        }
-        result_len = ary_true_len(data_ary, result_len);
-        in_len = result_len;
-        delete[] unit_ary;
-        delete[] tmp_product;
-    }
+    // template <UINT_64 BASE1 = 1 << 16, UINT_64 BASE2 = 10000, typename T>
+    // void base_conversion(T input, T output, size_t in_len)
+    // {
+    //     using Ty = decltype(input[0]);
+    //     if (in_len == 0 || BASE1 == BASE2)
+    //     {
+    //         return;
+    //     }
+    //     if (in_len < 2)
+    //     {
+    //         UINT_64 tmp = data_ary[0];
+    //         size_t pos = 0;
+    //         while (tmp > 0)
+    //         {
+    //             std::tie(tmp, data_ary[pos]) = div_mod(tmp, BASE2);
+    //             pos++;
+    //         }
+    //         return;
+    //     }
+    //     const size_t max_rank = min_2pow(in_len) / 2;                                                      // unit_ary存储的base1的最高次幂
+    //     const UINT_64 base1to2_len = static_cast<UINT_64>(std::ceil(std::log2(BASE1) / std::log2(BASE2))); // base1到base2的数长度的比值
+    //     size_t result_len = static_cast<size_t>(max_rank * base1to2_len * 2);                              // 结果的长度
+
+    //     ary_clr(data_ary + in_len, result_len - in_len); // 清零
+    //     // 输入进制比输出进制大进行预处理
+    //     if (BASE1 > BASE2)
+    //     {
+    //         size_t pos = in_len;
+    //         while (pos > 0)
+    //         {
+    //             pos--;
+    //             UINT_64 tmp = data_ary[pos];
+    //             size_t i = 0, trans_pos = pos * base1to2_len;
+    //             while (tmp > 0)
+    //             {
+    //                 std::tie(tmp, data_ary[trans_pos + i]) = div_mod(tmp, BASE2);
+    //                 i++;
+    //             }
+    //         }
+    //         UINT_64 tmp = BASE2;
+    //         while (tmp < BASE1)
+    //         {
+    //             tmp *= BASE2;
+    //             if (tmp == BASE1)
+    //             {
+    //                 return;
+    //             }
+    //         }
+    //     }
+    //     size_t unit_ary_len = max_rank * base1to2_len; // unit_ary的长度max_rank
+    //     T *unit_ary = new T[unit_ary_len]{};           // 用一个数组存储base2进制下的(base1)^1,(base1)^2,(base1)^4...
+    //     UINT_64 tmp = BASE1;
+    //     size_t i = 0;
+    //     while (tmp > 0)
+    //     {
+    //         std::tie(tmp, unit_ary[i]) = div_mod(tmp, BASE2); // 将base2进制下的base1存入数组
+    //     }
+    //     T *tmp_product = new T[max_rank * base1to2_len * 2];
+    //     for (size_t rank = 1; rank <= max_rank; rank *= 2)
+    //     {
+    //         size_t gap = rank * 2;
+    //         for (size_t i = 0; i < result_len; i += gap)
+    //         {
+    //             T *work_ary = data_ary + i;
+    //             abs_mul<BASE2>(work_ary + rank, unit_ary, tmp_product, rank, rank);
+    //             abs_add<BASE2, false>(work_ary, tmp_product, work_ary, rank, gap);
+    //         }
+    //         if (rank < max_rank)
+    //         {
+    //             abs_sqr<BASE2>(unit_ary, unit_ary, rank);
+    //         }
+    //     }
+    //     result_len = ary_true_len(data_ary, result_len);
+    //     in_len = result_len;
+    //     delete[] unit_ary;
+    //     delete[] tmp_product;
+    // }
 }
 
 using namespace hint;
