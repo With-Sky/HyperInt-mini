@@ -65,7 +65,7 @@ void test_div()
     auto t3 = std::chrono::high_resolution_clock::now();
     Integer prod = q * b;
     auto t4 = std::chrono::high_resolution_clock::now();
-    assert(r <= b);
+    assert(r < b);
     assert(a == prod + r);
     std::cout << "Div: " << std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count() << "us\n";
     std::cout << "Mod: " << std::chrono::duration_cast<std::chrono::microseconds>(t3 - t2).count() << "us\n";
