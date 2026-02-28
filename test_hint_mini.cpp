@@ -51,7 +51,7 @@ void test_div()
 {
     using namespace hint;
     size_t len = 1000000;
-    std::string s1(len * 2, '0'), s2(len, '0');
+    std::string s1(len * 2, '9'), s2(len, '7');
     for (size_t i = 0; i < len; ++i)
     {
         s1[i] = rand() % 10 + '0';
@@ -65,7 +65,16 @@ void test_div()
     auto t3 = std::chrono::high_resolution_clock::now();
     Integer prod = q * b;
     auto t4 = std::chrono::high_resolution_clock::now();
-    assert(r < b);
+    if (b < 0)
+    {
+        assert(r <= 0 && r > b);
+    }
+    else
+    {
+        assert(r >= 0 && r < b);
+    }
+    std::cout << "Quotient: " << q << std::endl;
+    std::cout << "Remainder: " << r << std::endl;
     assert(a == prod + r);
     std::cout << "Div: " << std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count() << "us\n";
     std::cout << "Mod: " << std::chrono::duration_cast<std::chrono::microseconds>(t3 - t2).count() << "us\n";

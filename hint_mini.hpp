@@ -1727,6 +1727,7 @@ namespace hint
                 Limb rem = dividend_norm.selfDivRem1(factor);
                 assert(rem == 0);
                 remainder = std::move(dividend_norm);
+                remainder.removeLeadingZero();
                 quotient.removeLeadingZero();
             }
         }
@@ -1777,6 +1778,8 @@ namespace hint
                 this->data.resize(len1 + len2);
                 absMul(Span(this->data.data(), len1), input.getView(), this->getSpan());
             }
+            this->setSign(this->isNeg() != input.isNeg());
+            this->removeLeadingZero();
             return *this;
         }
         Integer &operator*=(Limb input)
@@ -1801,6 +1804,19 @@ namespace hint
         {
             Integer quotient, remainder;
             this->absDivRem(input, quotient, remainder);
+            if(this->isNeg() == input.isNeg())
+            {
+                quotient.setSign(false);
+            }
+            else
+            {
+                if(!remainder.isZero())
+                {
+                    quotient += Limb(1);
+                }
+                quotient.setSign(true);
+            }
+            quotient.removeLeadingZero();
             *this = std::move(quotient);
             return *this;
         }
@@ -1808,6 +1824,12 @@ namespace hint
         {
             Integer quotient, remainder;
             this->absDivRem(input, quotient, remainder);
+            remainder.setSign(input.isNeg());
+            if((!remainder.isZero()) && (this->isNeg() != input.isNeg()))
+            {
+                remainder = input - remainder;
+            }
+            remainder.removeLeadingZero();
             *this = std::move(remainder);
             return *this;
         }
