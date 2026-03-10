@@ -855,81 +855,70 @@ namespace hint
                 }
                 c0.store(inout0), c1.reverse().store(inout1);
             }
-            // inv = 1 / float_len
+            // inv = 1 / float_len in AVX function
             template <size_t RI_DIFF = 1, typename Float>
-            inline void real_dot_binrev(Float in_out[], Float in[], size_t float_len, Float inv = -1)
+            inline void real_dot_binrev(Float in_out[], const Float in[], size_t float_len, Float inv = -1)
             {
                 static_assert(is_2pow(RI_DIFF));
+                static_assert(RI_DIFF <= 8);
                 assert(is_2pow(float_len));
-                assert(float_len >= RI_DIFF * 2);
-                auto transToRIRI = [](Float arr[], size_t len)
+                if (float_len < 2)
                 {
-                    if (RI_DIFF == 1)
-                    {
-                        return;
-                    }
-                    Float temp[RI_DIFF * 2]{};
-                    for (auto it = arr, end = arr + len; it < end; it += RI_DIFF * 2)
-                    {
-                        std::copy(it, it + RI_DIFF * 2, temp);
-                        for (size_t i = 0; i < RI_DIFF; i++)
-                        {
-                            it[i * 2] = temp[i];
-                            it[i * 2 + 1] = temp[i + RI_DIFF];
-                        }
-                    }
-                };
-                auto transToRRII = [](Float arr[], size_t len)
-                {
-                    if (RI_DIFF == 1)
-                    {
-                        return;
-                    }
-                    Float temp[RI_DIFF * 2]{};
-                    for (auto it = arr, end = arr + len; it < end; it += RI_DIFF * 2)
-                    {
-                        for (size_t i = 0; i < RI_DIFF; i++)
-                        {
-                            temp[i] = it[i * 2];
-                            temp[i + RI_DIFF] = it[i * 2 + 1];
-                        }
-                        std::copy(temp, temp + RI_DIFF * 2, it);
-                    }
-                };
-                transToRIRI(in_out, float_len);
-                if (in_out != in)
-                {
-                    transToRIRI(in, float_len);
+                    return;
                 }
+                auto idx_trans = [](size_t idx)
+                {
+                    return (idx / RI_DIFF) * RI_DIFF * 2 + idx % RI_DIFF;
+                };
+                assert(float_len >= RI_DIFF * 2);
                 using Complex = std::complex<Float>;
                 inv = inv < 0 ? Float(2) / float_len : inv * Float(2);
+                auto r0 = in_out[0], i0 = in_out[RI_DIFF], r1 = in[0], i1 = in[RI_DIFF];
+                transform2(r0, i0);
+                transform2(r1, i1);
+                r0 *= r1, i0 *= i1;
+                transform2(r0, i0);
+                in_out[0] = r0 * 0.5 * inv, in_out[RI_DIFF] = i0 * 0.5 * inv;
+                if (float_len >= 4)
                 {
-                    auto r0 = in_out[0], i0 = in_out[1], r1 = in[0], i1 = in[1];
-                    transform2(r0, i0);
-                    transform2(r1, i1);
-                    r0 *= r1, i0 *= i1;
-                    transform2(r0, i0);
-                    in_out[0] = r0 * 0.5 * inv, in_out[1] = i0 * 0.5 * inv;
-                    auto temp = Complex(in_out[2], in_out[3]) * Complex(in[2], in[3]) * inv;
-                    in_out[2] = temp.real(), in_out[3] = temp.imag();
-                    inv /= Float(8);
-                    dot_rfft(&in_out[4], &in_out[6], &in[4], &in[6], Complex(COS_PI_8, -COS_PI_8), inv);
+                    Complex temp(in_out[idx_trans(1)], in_out[idx_trans(1) + RI_DIFF]);
+                    temp *= Complex(in[idx_trans(1)], in[idx_trans(1) + RI_DIFF]) * inv;
+                    in_out[idx_trans(1)] = temp.real(), in_out[idx_trans(1) + RI_DIFF] = temp.imag();
+                }
+                if (float_len >= 8)
+                {
+                    inv *= Float(0.125);
+                    dot_rfft<RI_DIFF>(&in_out[idx_trans(2)], &in_out[idx_trans(3)],
+                                      &in[idx_trans(2)], &in[idx_trans(3)], Complex(COS_PI_8, -COS_PI_8), inv);
                 }
                 BinRevTableComplexIterHP<Float> table(31, 32);
-                for (size_t begin = 8; begin < float_len; begin *= 2)
+                if (float_len >= 16)
+                {
+                    table.reset(4);
+                    dot_rfft<RI_DIFF>(&in_out[idx_trans(4)], &in_out[idx_trans(7)],
+                                      &in[idx_trans(4)], &in[idx_trans(7)], table.iterate(), inv);
+                    dot_rfft<RI_DIFF>(&in_out[idx_trans(5)], &in_out[idx_trans(6)],
+                                      &in[idx_trans(5)], &in[idx_trans(6)], table.iterate(), inv);
+                }
+                for (size_t begin = 16; begin < float_len; begin *= 2)
                 {
                     table.reset(begin / 2);
-                    auto it0 = in_out + begin, it1 = it0 + begin - 2, it2 = in + begin, it3 = it2 + begin - 2;
-                    for (; it0 < it1; it0 += 2, it1 -= 2, it2 += 2, it3 -= 2)
+                    auto it0 = in_out + begin, it1 = it0 + begin - RI_DIFF - 1;
+                    auto it2 = in + begin, it3 = it2 + begin - RI_DIFF - 1;
+                    for (; it0 < it1;)
                     {
-                        dot_rfft(it0, it1, it2, it3, table.iterate(), inv);
+                        auto end = it0 + std::min(RI_DIFF, (begin - RI_DIFF) / 2);
+                        for (; it0 < end; it0++, it1--, it2++, it3--)
+                        {
+                            dot_rfft<RI_DIFF>(it0, it1, it2, it3, table.iterate(), inv);
+                        }
+                        it0 += RI_DIFF, it1 -= RI_DIFF, it2 += RI_DIFF, it3 -= RI_DIFF;
                     }
                 }
-                transToRRII(in_out, float_len);
             }
 
             template <typename Float>
-            inline void real_dot_binrev2(Float in_out[], Float in[], size_t float_len)
+            inline void real_dot_binrev2(Float in_out[], const Float in[], size_t float_len)
             {
                 using Complex = std::complex<Float>;
                 using F2 = Float2<Float>;
@@ -1596,15 +1585,33 @@ namespace hint
         static void absInvNewton(View m, Span inv)
         {
             size_t k = m.size;
+            assert(k > 0);
             assert(inv.size >= k + 1); // 确保内存空间足够
-            size_t s = (k - 1) / 2;
-            if (s <= 8)
+            if (k <= 16)
             {
                 Limb b_2k[64]{};
                 b_2k[k * 2] = 1; // BASE ^ (k * 2)
                 absDivBasicCore(Span(b_2k, k * 2 + 1), m, inv);
                 return;
             }
+            // constexpr uint32_t BASE2 = uint32_t(BASE) * BASE;
+            // constexpr uint64_t BASE3 = uint64_t(BASE) * BASE2, BASE4 = BASE3 * BASE;
+            // if (k == 1)
+            // {
+            //     uint32_t inv0 = BASE2 / m[0];
+            //     inv[0] = inv0 % BASE, inv0 /= BASE;
+            //     inv[1] = inv0;
+            //     return;
+            // }
+            // else if (k == 2)
+            // {
+            //     uint64_t inv0 = BASE4 / (m[0] + m[1] * BASE);
+            //     inv[0] = inv0 % BASE, inv0 /= BASE;
+            //     inv[1] = inv0 % BASE, inv0 /= BASE;
+            //     inv[2] = inv0;
+            //     return;
+            // }
+            size_t s = (k - 1) / 2;
             // 计算高位的倒数，即低精度倒数
             absInvNewton(m + s, inv);    // 利用指针移位进行截取
             size_t inv0_len = k - s + 1; // 低精度的inv长度为m'长度加1
