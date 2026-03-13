@@ -661,61 +661,6 @@ namespace hint
             };
 
             template <typename Float>
-            class BinRevTableComplexIterHP
-            {
-            public:
-                using Complex = std::complex<Float>;
-                static constexpr int MAX_LOG_LEN = 32;
-                static constexpr size_t MAX_LEN = size_t(1) << MAX_LOG_LEN;
-
-                BinRevTableComplexIterHP(int log_max_iter_in, int log_fft_len_in)
-                    : index(0), pop(0), log_max_iter(log_max_iter_in), log_fft_len(log_fft_len_in)
-                {
-                    assert(log_max_iter <= log_fft_len);
-                    assert(log_fft_len <= MAX_LOG_LEN);
-                    const Float factor = Float(1) / (size_t(1) << (log_fft_len - log_max_iter));
-                    for (int i = 0; i < MAX_LOG_LEN; i++)
-                    {
-                        units[i] = getOmega<Float>(size_t(1) << (i + 1), 1, factor);
-                    }
-                    table[0] = Complex(1, 0);
-                }
-                void reset(size_t i = 0)
-                {
-                    index = i;
-                    if (i == 0)
-                    {
-                        pop = 0;
-                        return;
-                    }
-                    pop = hint_popcnt(i);
-                    const size_t len = size_t(1) << log_fft_len;
-                    for (int p = pop; p > 0; p--)
-                    {
-                        table[p] = getOmega<Float>(len, bitrev(i, log_max_iter));
-                        i &= (i - 1);
-                    }
-                }
-                Complex iterate()
-                {
-                    Complex res = table[pop];
-                    index++;
-                    int zero = hint_ctz(index);
-                    pop -= zero;
-                    table[pop + 1] = table[pop] * units[zero];
-                    pop++;
-                    return res;
-                }
-
-            private:
-                Complex units[MAX_LOG_LEN]{};
-                Complex table[MAX_LOG_LEN]{};
-                size_t index;
-                int pop;
-                int log_max_iter, log_fft_len;
-            };
-
-            template <typename Float>
             class BinRevTableC2HP
             {
             public:
@@ -859,19 +804,34 @@ namespace hint
             template <size_t RI_DIFF = 1, typename Float>
             inline void real_dot_binrev(Float in_out[], const Float in[], size_t float_len, Float inv = -1)
             {
+                constexpr size_t MAX_LEN = 32;
+                constexpr int LOG_LEN = hint_log2(MAX_LEN);
                 static_assert(is_2pow(RI_DIFF));
                 static_assert(RI_DIFF <= 8);
                 assert(is_2pow(float_len));
+                assert(float_len <= MAX_LEN);
                 if (float_len < 2)
                 {
                     return;
                 }
+                assert(float_len >= RI_DIFF * 2);
                 auto idx_trans = [](size_t idx)
                 {
                     return (idx / RI_DIFF) * RI_DIFF * 2 + idx % RI_DIFF;
                 };
-                assert(float_len >= RI_DIFF * 2);
+                auto get_omega = [](size_t idx, size_t rank)
+                {
+                    return std::polar<Float>(1, -HINT_PI * Float(idx) / rank);
+                };
                 using Complex = std::complex<Float>;
+                static const Complex table[]{
+                    get_omega(bitrev(4, LOG_LEN), MAX_LEN),
+                    get_omega(bitrev(5, LOG_LEN), MAX_LEN),
+                    get_omega(bitrev(8, LOG_LEN), MAX_LEN),
+                    get_omega(bitrev(9, LOG_LEN), MAX_LEN),
+                    get_omega(bitrev(10, LOG_LEN), MAX_LEN),
+                    get_omega(bitrev(11, LOG_LEN), MAX_LEN),
+                };
                 inv = inv < 0 ? Float(2) / float_len : inv * Float(2);
                 auto r0 = in_out[0], i0 = in_out[RI_DIFF], r1 = in[0], i1 = in[RI_DIFF];
                 transform2(r0, i0);
@@ -891,29 +851,24 @@ namespace hint
                     dot_rfft<RI_DIFF>(&in_out[idx_trans(2)], &in_out[idx_trans(3)],
                                       &in[idx_trans(2)], &in[idx_trans(3)], Complex(COS_PI_8, -COS_PI_8), inv);
                 }
-                BinRevTableComplexIterHP<Float> table(31, 32);
+
                 if (float_len >= 16)
                 {
-                    table.reset(4);
                     dot_rfft<RI_DIFF>(&in_out[idx_trans(4)], &in_out[idx_trans(7)],
-                                      &in[idx_trans(4)], &in[idx_trans(7)], table.iterate(), inv);
+                                      &in[idx_trans(4)], &in[idx_trans(7)], table[0], inv);
                     dot_rfft<RI_DIFF>(&in_out[idx_trans(5)], &in_out[idx_trans(6)],
-                                      &in[idx_trans(5)], &in[idx_trans(6)], table.iterate(), inv);
+                                      &in[idx_trans(5)], &in[idx_trans(6)], table[1], inv);
                 }
-                for (size_t begin = 16; begin < float_len; begin *= 2)
+                if (float_len >= 32)
                 {
-                    table.reset(begin / 2);
-                    auto it0 = in_out + begin, it1 = it0 + begin - RI_DIFF - 1;
-                    auto it2 = in + begin, it3 = it2 + begin - RI_DIFF - 1;
-                    for (; it0 < it1;)
-                    {
-                        auto end = it0 + std::min(RI_DIFF, (begin - RI_DIFF) / 2);
-                        for (; it0 < end; it0++, it1--, it2++, it3--)
-                        {
-                            dot_rfft<RI_DIFF>(it0, it1, it2, it3, table.iterate(), inv);
-                        }
-                        it0 += RI_DIFF, it1 -= RI_DIFF, it2 += RI_DIFF, it3 -= RI_DIFF;
-                    }
+                    dot_rfft<RI_DIFF>(&in_out[idx_trans(8)], &in_out[idx_trans(15)],
+                                      &in[idx_trans(8)], &in[idx_trans(15)], table[2], inv);
+                    dot_rfft<RI_DIFF>(&in_out[idx_trans(9)], &in_out[idx_trans(14)],
+                                      &in[idx_trans(9)], &in[idx_trans(14)], table[3], inv);
+                    dot_rfft<RI_DIFF>(&in_out[idx_trans(10)], &in_out[idx_trans(13)],
+                                      &in[idx_trans(10)], &in[idx_trans(13)], table[4], inv);
+                    dot_rfft<RI_DIFF>(&in_out[idx_trans(11)], &in_out[idx_trans(12)],
+                                      &in[idx_trans(11)], &in[idx_trans(12)], table[5], inv);
                 }
             }
 
@@ -1811,13 +1766,13 @@ namespace hint
         {
             Integer quotient, remainder;
             this->absDivRem(input, quotient, remainder);
-            if(this->isNeg() == input.isNeg())
+            if (this->isNeg() == input.isNeg())
             {
                 quotient.setSign(false);
             }
             else
             {
-                if(!remainder.isZero())
+                if (!remainder.isZero())
                 {
                     quotient += Limb(1);
                 }
@@ -1832,7 +1787,7 @@ namespace hint
             Integer quotient, remainder;
             this->absDivRem(input, quotient, remainder);
             remainder.setSign(input.isNeg());
-            if((!remainder.isZero()) && (this->isNeg() != input.isNeg()))
+            if ((!remainder.isZero()) && (this->isNeg() != input.isNeg()))
             {
                 remainder = input - remainder;
             }
