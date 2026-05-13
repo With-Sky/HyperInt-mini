@@ -52,10 +52,14 @@ void test_div()
     using namespace hint;
     size_t len = 1000000;
     std::string s1(len * 2, '9'), s2(len, '7');
-    for (size_t i = 0; i < len; ++i)
+    srand(0);
+    for(auto &c : s1)
     {
-        s1[i] = rand() % 10 + '0';
-        s2[i] = rand() % 10 + '0';
+        c = rand() % 10 + '0';
+    }
+    for(auto &c : s2)
+    {
+        c = rand() % 10 + '0';
     }
     Integer a = s1, b = s2;
     auto t1 = std::chrono::high_resolution_clock::now();
