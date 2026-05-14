@@ -1585,7 +1585,7 @@ namespace hint
         }
         static void absDivNewtonWithInv(Span dividend, View divisor, Span quotient, View inv_span)
         {
-            assert(dividend.size > divisor.size && dividend.size <= divisor.size * 2);
+            assert(dividend.size <= divisor.size * 2);
             if (dividend.size <= divisor.size)
             {
                 return;
@@ -1668,10 +1668,7 @@ namespace hint
             assert(divisor_high >= HALF_BASE);
             std::vector<Limb> inv(len2 + 1);
             Span inv_span(inv.data(), inv.size());
-            auto t1 = std::chrono::high_resolution_clock::now();
             absInvNewton(divisor, inv_span);
-            auto t2 = std::chrono::high_resolution_clock::now();
-            std::cout << "inv time: " << std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count() << "us" << std::endl;
             size_t blocks = len1 / len2, len1_rem = len2 * blocks;
             auto divid_it = dividend.ptr + (len1_rem - len2);
             auto quot_it = quotient.ptr + (len1_rem - len2);
