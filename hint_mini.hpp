@@ -1583,7 +1583,80 @@ namespace hint
             prod_span.size--;                           // 可得 inv0 ^ 2 * m / BASE ^ (k - s) 整数部分长度为 k + 1 和 inv0 * 2 * BASE ^ s 相同
             absSub(inv2_span, prod_span, inv);          // inv = inv0 * 2 * BASE ^ s - inv0 ^ 2 * m / BASE ^ (k - s)
         }
-        static void absDivNewtonCore(Span dividend, View divisor, Span quotient)
+        static void absDivNewtonWithInv(Span dividend, View divisor, Span quotient, View inv_span)
+        {
+            assert(dividend.size > divisor.size && dividend.size <= divisor.size * 2);
+            if (dividend.size <= divisor.size)
+            {
+                return;
+            }
+            size_t k = divisor.size;
+            Span divid_high = dividend + (k - 1);
+            std::vector<Limb> qhat(divid_high.size + inv_span.size);
+            std::vector<Limb> prod(qhat.size() - 1); // 存储 qhat * divisor
+            Span qhat_span(qhat.data(), qhat.size()), prod_span(prod.data(), prod.size());
+            absMul(inv_span, divid_high, qhat_span); // 被除数乘以倒数
+            qhat_span = qhat_span + (k + 1);         // 右移k + 1位
+            absMul(divisor, qhat_span, prod_span);   // qhat * divisor
+            prod_span.size = count_ture_length(prod_span.ptr, prod_span.size);
+            // 比较 qhat * divisor 和 divid大小以进行修正
+            while (absCompare(prod_span, dividend) > 0)
+            {
+                absSub(prod_span, divisor, prod_span); // prod -= divisor
+                absSub1(qhat_span, 1, qhat_span);      // qhat--
+            }
+            absSub(dividend, prod_span, dividend); // divid -= prod
+            dividend.size = k;
+            while (absCompare(dividend, divisor) >= 0)
+            {
+                absSub(dividend, divisor, dividend);
+                absAdd1(qhat_span, 1, qhat_span);
+            }
+            assert(qhat_span[qhat_span.size - 1] == 0);
+            qhat_span.size--;
+            std::copy(qhat_span.begin(), qhat_span.end(), quotient.begin());
+        }
+        // 处理被除数长度小于等于除数两倍长度的情况
+        static void absDivNewtonCore1(Span dividend, View divisor, Span quotient)
+        {
+            if (dividend.size <= divisor.size || dividend.size >= divisor.size * 2)
+            {
+                return;
+            }
+            assert(divisor.size > 0);
+            size_t len1 = dividend.size, len2 = divisor.size, quot_len = len1 - len2, shift_len = len2 * 2 - len1;
+            assert(divisor[len2 - 1] >= HALF_BASE);
+            Span dividend_high = dividend + shift_len;
+            View divisor_high = divisor + shift_len;
+            if (absCompare(dividend_high + quot_len, divisor_high) >= 0)
+            {
+                std::fill_n(quotient.begin(), quot_len, Limb(BASE - 1));
+            }
+            else
+            {
+                std::vector<Limb> inv(divisor_high.size + 1);
+                Span inv_span(inv.data(), inv.size());
+                absInvNewton(divisor_high, inv_span);
+                absDivNewtonWithInv(dividend_high, divisor_high, quotient, inv_span);
+            }
+            std::vector<Limb> prod(quot_len + shift_len);
+            Span prod_span(prod.data(), prod.size());
+            absMul(View(divisor.begin(), shift_len), quotient, prod_span);
+            prod_span.size = count_ture_length(prod_span.ptr, prod_span.size);
+            dividend.size = count_ture_length(dividend.ptr, dividend.size);
+            assert(dividend.size <= prod_span.size);
+            while (absCompare(prod_span, dividend) > 0)
+            {
+                absSub1(quotient, 1, quotient);
+                quotient.size = count_ture_length(quotient.ptr, quotient.size);
+                absSub(dividend_high, divisor_high, dividend_high);
+                dividend_high.size = count_ture_length(dividend_high.ptr, dividend_high.size);
+                absAdd(prod_span, divisor_high, prod_span);
+                prod_span.size = count_ture_length(prod_span.ptr, prod_span.size);
+            }
+            absSub(dividend, prod_span, dividend);
+        }
+        static void absDivNewtonCore2(Span dividend, View divisor, Span quotient)
         {
             if (dividend.size <= divisor.size)
             {
@@ -1595,50 +1668,20 @@ namespace hint
             assert(divisor_high >= HALF_BASE);
             std::vector<Limb> inv(len2 + 1);
             Span inv_span(inv.data(), inv.size());
+            auto t1 = std::chrono::high_resolution_clock::now();
             absInvNewton(divisor, inv_span);
-            auto div_seg = [&](Span divid, Span quot)
-            {
-                if (divid.size <= divisor.size)
-                {
-                    return;
-                }
-                assert(divid.size <= divisor.size * 2);
-                size_t k = divisor.size;
-                Span divid_high = divid + (k - 1);
-                std::vector<Limb> qhat(divid_high.size + inv_span.size);
-                std::vector<Limb> prod(qhat.size() - 1); // 存储 qhat * divisor
-                Span qhat_span(qhat.data(), qhat.size()), prod_span(prod.data(), prod.size());
-                absMul(inv_span, divid_high, qhat_span); // 被除数乘以倒数
-                qhat_span = qhat_span + (k + 1);         // 右移k + 1位
-                absMul(divisor, qhat_span, prod_span);   // qhat * divisor
-                prod_span.size = count_ture_length(prod_span.ptr, prod_span.size);
-                // 比较 qhat * divisor 和 divid大小以进行修正
-                while (absCompare(prod_span, divid) > 0)
-                {
-                    absSub(prod_span, divisor, prod_span); // prod -= divisor
-                    absSub1(qhat_span, 1, qhat_span);      // qhat--
-                }
-                absSub(divid, prod_span, divid); // divid -= prod
-                divid.size = k;
-                while (absCompare(divid, divisor) >= 0)
-                {
-                    absSub(divid, divisor, divid);
-                    absAdd1(qhat_span, 1, qhat_span);
-                }
-                assert(qhat_span[qhat_span.size - 1] == 0);
-                qhat_span.size--;
-                std::copy(qhat_span.begin(), qhat_span.end(), quot.begin());
-            };
+            auto t2 = std::chrono::high_resolution_clock::now();
+            std::cout << "inv time: " << std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count() << "us" << std::endl;
             size_t blocks = len1 / len2, len1_rem = len2 * blocks;
             auto divid_it = dividend.ptr + (len1_rem - len2);
             auto quot_it = quotient.ptr + (len1_rem - len2);
             // 分段进行除法运算, 处理被除数长度远大于除数的情况
-            div_seg(dividend + (len1_rem - len2), quotient + (len1_rem - len2));
+            absDivNewtonWithInv(dividend + (len1_rem - len2), divisor, quotient + (len1_rem - len2), inv_span);
             while (divid_it > dividend.ptr)
             {
                 divid_it -= len2;
                 quot_it -= len2;
-                div_seg(Span(divid_it, len2 * 2), Span(quot_it, len2));
+                absDivNewtonWithInv(Span(divid_it, len2 * 2), divisor, Span(quot_it, len2), inv_span);
             }
         }
         void absDivRem(const Integer &divisor, Integer &quotient, Integer &remainder) const
@@ -1679,11 +1722,15 @@ namespace hint
                 // 剩余的quotient一定为len1-len2位
                 if (len2 <= 64 || (len1 - len2) <= 64)
                 {
-                    absDivBasicCore(divident_span, divisor_span, quotient.getSpan());
+                    absDivBasicCore(divident_span, divisor_span, Span(quotient.data.data(), quot_len - 1));
+                }
+                else if (len1 < len2 * 2)
+                {
+                    absDivNewtonCore1(divident_span, divisor_span, Span(quotient.data.data(), quot_len - 1));
                 }
                 else
                 {
-                    absDivNewtonCore(divident_span, divisor_span, quotient.getSpan());
+                    absDivNewtonCore2(divident_span, divisor_span, Span(quotient.data.data(), quot_len - 1));
                 }
                 dividend_norm.removeLeadingZero();
                 Limb rem = dividend_norm.selfDivRem1(factor);
