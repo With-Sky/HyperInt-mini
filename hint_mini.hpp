@@ -1631,6 +1631,11 @@ namespace hint
             if (absCompare(dividend_high + quot_len, divisor_high) >= 0)
             {
                 std::fill_n(quotient.begin(), quot_len, Limb(BASE - 1));
+                // dividend_high -= (BASE ^ quot_len - 1) * divisor_high;
+                // dividend_high -= (BASE ^ quot_len) * divisor_high;
+                // dividend_high += divisor_high;
+                absSub(dividend_high + quot_len, divisor_high, dividend_high + quot_len);
+                dividend_high[quot_len] = absAdd(dividend_high, divisor_high, dividend_high);
             }
             else
             {
@@ -1644,7 +1649,6 @@ namespace hint
             absMul(View(divisor.begin(), shift_len), quotient, prod_span);
             prod_span.size = count_ture_length(prod_span.ptr, prod_span.size);
             dividend.size = count_ture_length(dividend.ptr, dividend.size);
-            assert(dividend.size <= prod_span.size);
             while (absCompare(prod_span, dividend) > 0)
             {
                 absSub1(quotient, 1, quotient);
@@ -1655,6 +1659,8 @@ namespace hint
                 prod_span.size = count_ture_length(prod_span.ptr, prod_span.size);
             }
             absSub(dividend, prod_span, dividend);
+            dividend_high.size = count_ture_length(dividend_high.ptr, dividend_high.size);
+            assert(absCompare(dividend, divisor) < 0);
         }
         static void absDivNewtonCore2(Span dividend, View divisor, Span quotient)
         {
