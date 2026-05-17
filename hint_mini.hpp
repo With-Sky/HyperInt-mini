@@ -1,3 +1,6 @@
+#ifndef HINT_MINI_HPP
+#define HINT_MINI_HPP
+
 #include <iostream>
 #include <vector>
 #include <string>
@@ -1616,7 +1619,7 @@ namespace hint
             qhat_span.size--;
             std::copy(qhat_span.begin(), qhat_span.end(), quotient.begin());
         }
-        // 处理被除数长度小于等于除数两倍长度的情况
+        // 处理被除数长度小于除数两倍长度的情况
         static void absDivNewtonCore1(Span dividend, View divisor, Span quotient)
         {
             if (dividend.size <= divisor.size || dividend.size >= divisor.size * 2)
@@ -1646,20 +1649,26 @@ namespace hint
             }
             std::vector<Limb> prod(quot_len + shift_len);
             Span prod_span(prod.data(), prod.size());
-            absMul(View(divisor.begin(), shift_len), quotient, prod_span);
+            View divisor_low(divisor.begin(), quot_len);
+            absMul(divisor_low, quotient, prod_span);
             prod_span.size = count_ture_length(prod_span.ptr, prod_span.size);
             dividend.size = count_ture_length(dividend.ptr, dividend.size);
+            dividend_high.size = count_ture_length(dividend_high.ptr, dividend_high.size);
             while (absCompare(prod_span, dividend) > 0)
             {
-                absSub1(quotient, 1, quotient);
+                absSub1(quotient, 1, quotient); // quotient--
                 quotient.size = count_ture_length(quotient.ptr, quotient.size);
-                absSub(dividend_high, divisor_high, dividend_high);
-                dividend_high.size = count_ture_length(dividend_high.ptr, dividend_high.size);
-                absAdd(prod_span, divisor_high, prod_span);
+                if (absAdd(dividend_high, divisor_high, dividend_high)) // dividend_high += divisor_high
+                {
+                    dividend_high[dividend_high.size] = 1;
+                    dividend_high.size++;
+                    dividend.size++;
+                }
+                absSub(prod_span, divisor_low, prod_span); // prod -= divisor_low
                 prod_span.size = count_ture_length(prod_span.ptr, prod_span.size);
             }
             absSub(dividend, prod_span, dividend);
-            dividend_high.size = count_ture_length(dividend_high.ptr, dividend_high.size);
+            dividend.size = count_ture_length(dividend.ptr, dividend.size);
             assert(absCompare(dividend, divisor) < 0);
         }
         static void absDivNewtonCore2(Span dividend, View divisor, Span quotient)
@@ -1715,25 +1724,27 @@ namespace hint
                 assert(len2 == divisor.length());
                 size_t quot_len = len1 - len2 + 1;
                 quotient.data.resize(quot_len);
-                Span divident_span = dividend_norm.getSpan(), divisor_span = divisor_norm.getSpan();
-                Span high = divident_span + (quot_len - 1); // 高len2位
+                Span dividend_span = dividend_norm.getSpan(), divisor_span = divisor_norm.getSpan();
+                Span high = dividend_span + (quot_len - 1); // 高len2位
                 if (absCompare(View(high), View(divisor_span)) >= 0)
                 {
                     quotient.data[quot_len - 1] = 1;
                     absSub(high, divisor_span, high);
+                    len1 = dividend_span.size = count_ture_length(dividend_span.ptr, dividend_span.size);
                 }
                 // 剩余的quotient一定为len1-len2位
+                Span quot_span(quotient.data.data(), len1 - len2);
                 if (len2 <= 64 || (len1 - len2) <= 64)
                 {
-                    absDivBasicCore(divident_span, divisor_span, Span(quotient.data.data(), quot_len - 1));
+                    absDivBasicCore(dividend_span, divisor_span, quot_span);
                 }
                 else if (len1 < len2 * 2)
                 {
-                    absDivNewtonCore1(divident_span, divisor_span, Span(quotient.data.data(), quot_len - 1));
+                    absDivNewtonCore1(dividend_span, divisor_span, quot_span);
                 }
                 else
                 {
-                    absDivNewtonCore2(divident_span, divisor_span, Span(quotient.data.data(), quot_len - 1));
+                    absDivNewtonCore2(dividend_span, divisor_span, quot_span);
                 }
                 dividend_norm.removeLeadingZero();
                 Limb rem = dividend_norm.selfDivRem1(factor);
@@ -1892,3 +1903,5 @@ namespace hint
         bool sign;
     };
 }
+
+#endif // HINT_MINI_HPP
