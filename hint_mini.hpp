@@ -1018,7 +1018,7 @@ namespace hint
     }
 
     template <typename T>
-    constexpr size_t count_ture_length(const T array[], size_t length)
+    constexpr size_t count_true_length(const T array[], size_t length)
     {
         if (nullptr == array)
         {
@@ -1132,7 +1132,7 @@ namespace hint
         void removeLeadingZero()
         {
             size_t len = length();
-            len = count_ture_length(data.data(), len);
+            len = count_true_length(data.data(), len);
             data.resize(len);
             sign = sign && (len > 0);
         }
@@ -1220,8 +1220,8 @@ namespace hint
         }
         static int absCompare(View input1, View input2)
         {
-            size_t len1 = count_ture_length(input1.ptr, input1.size);
-            size_t len2 = count_ture_length(input2.ptr, input2.size);
+            size_t len1 = count_true_length(input1.ptr, input1.size);
+            size_t len2 = count_true_length(input2.ptr, input2.size);
             if (len1 != len2)
             {
                 return len1 > len2 ? 1 : -1;
@@ -1601,7 +1601,7 @@ namespace hint
             absMul(inv_span, divid_high, qhat_span); // 被除数乘以倒数
             qhat_span = qhat_span + (k + 1);         // 右移k + 1位
             absMul(divisor, qhat_span, prod_span);   // qhat * divisor
-            prod_span.size = count_ture_length(prod_span.ptr, prod_span.size);
+            prod_span.size = count_true_length(prod_span.ptr, prod_span.size);
             // 比较 qhat * divisor 和 divid大小以进行修正
             while (absCompare(prod_span, dividend) > 0)
             {
@@ -1649,15 +1649,15 @@ namespace hint
             }
             std::vector<Limb> prod(quot_len + shift_len);
             Span prod_span(prod.data(), prod.size());
-            View divisor_low(divisor.begin(), quot_len);
+            View divisor_low(divisor.begin(), shift_len);
             absMul(divisor_low, quotient, prod_span);
-            prod_span.size = count_ture_length(prod_span.ptr, prod_span.size);
-            dividend.size = count_ture_length(dividend.ptr, dividend.size);
-            dividend_high.size = count_ture_length(dividend_high.ptr, dividend_high.size);
+            prod_span.size = count_true_length(prod_span.ptr, prod_span.size);
+            dividend.size = count_true_length(dividend.ptr, dividend.size);
+            dividend_high.size = count_true_length(dividend_high.ptr, dividend_high.size);
             while (absCompare(prod_span, dividend) > 0)
             {
                 absSub1(quotient, 1, quotient); // quotient--
-                quotient.size = count_ture_length(quotient.ptr, quotient.size);
+                quotient.size = count_true_length(quotient.ptr, quotient.size);
                 if (absAdd(dividend_high, divisor_high, dividend_high)) // dividend_high += divisor_high
                 {
                     dividend_high[dividend_high.size] = 1;
@@ -1665,10 +1665,10 @@ namespace hint
                     dividend.size++;
                 }
                 absSub(prod_span, divisor_low, prod_span); // prod -= divisor_low
-                prod_span.size = count_ture_length(prod_span.ptr, prod_span.size);
+                prod_span.size = count_true_length(prod_span.ptr, prod_span.size);
             }
             absSub(dividend, prod_span, dividend);
-            dividend.size = count_ture_length(dividend.ptr, dividend.size);
+            dividend.size = count_true_length(dividend.ptr, dividend.size);
             assert(absCompare(dividend, divisor) < 0);
         }
         static void absDivNewtonCore2(Span dividend, View divisor, Span quotient)
@@ -1730,7 +1730,7 @@ namespace hint
                 {
                     quotient.data[quot_len - 1] = 1;
                     absSub(high, divisor_span, high);
-                    len1 = dividend_span.size = count_ture_length(dividend_span.ptr, dividend_span.size);
+                    len1 = dividend_span.size = count_true_length(dividend_span.ptr, dividend_span.size);
                 }
                 // 剩余的quotient一定为len1-len2位
                 Span quot_span(quotient.data.data(), len1 - len2);
