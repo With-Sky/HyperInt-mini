@@ -106,7 +106,7 @@ void test_div_all()
     test_div(1e4, 1.5);
     test_div(1e3, 2.0);
     test_div(2e3, 2.0);
-    test_div(5e4, 2.0);
+    test_div(5e3, 2.0);
     test_div(1e4, 2.0);
     test_div(1e3, 5);
     test_div(2e3, 5);
