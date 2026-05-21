@@ -803,7 +803,7 @@ namespace hint
                 }
                 c0.store(inout0), c1.reverse().store(inout1);
             }
-            // inv = 1 / float_len in AVX function
+            // inv = 1 / float_len
             template <size_t RI_DIFF = 1, typename Float>
             inline void real_dot_binrev(Float in_out[], const Float in[], size_t float_len, Float inv = -1)
             {
@@ -888,7 +888,8 @@ namespace hint
                 for (size_t begin = 16; begin < float_len; begin *= 2)
                 {
                     table.reset(begin / 2);
-                    auto it0 = in_out + begin, it1 = it0 + begin - 4, it2 = in + begin, it3 = it2 + begin - 4;
+                    auto it0 = in_out + begin, it1 = it0 + begin - 4;
+                    auto it2 = in + begin, it3 = it2 + begin - 4;
                     for (; it0 < it1; it0 += 4, it1 -= 4, it2 += 4, it3 -= 4)
                     {
                         dot_rfftX2(it0, it1, it2, it3, table.iterate(), invx);
