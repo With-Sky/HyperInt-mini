@@ -9,6 +9,7 @@
 #include <cassert>
 #include <cstdint>
 #include <cstddef>
+#include <climits>
 
 #include <chrono>
 
@@ -77,7 +78,7 @@ namespace hint
     constexpr int hint_ctz(uint32_t x)
     {
         int r0 = 31;
-        x &= (-x);
+        x &= (0 - x);
         if (x & 0x55555555)
         {
             r0 &= ~1;
@@ -105,7 +106,7 @@ namespace hint
     constexpr int hint_ctz(uint64_t x)
     {
         int r0 = 63;
-        x &= (-x);
+        x &= (0 - x);
         if (x & 0x5555555555555555)
         {
             r0 &= ~1; // -1
@@ -632,7 +633,6 @@ namespace hint
                         return;
                     }
                     auto itc = reinterpret_cast<C2 *>(inout);
-                    auto itf = reinterpret_cast<F2 *>(inout);
                     if (float_len == 4) // 2
                     {
                         transform2(inout[0], inout[1]);
@@ -878,7 +878,6 @@ namespace hint
             template <typename Float>
             inline void real_dot_binrev2(Float in_out[], const Float in[], size_t float_len)
             {
-                using Complex = std::complex<Float>;
                 using F2 = Float2<Float>;
                 Float inv = 1.0 / float_len;
                 real_dot_binrev<2>(in_out, in, 16, inv);
@@ -1327,28 +1326,38 @@ namespace hint
         }
         Integer &add(View input, bool in_sign)
         {
+            bool same = input.ptr == this->getView().ptr;
             size_t len1 = this->length(), len2 = input.size;
             if (this->isNeg() == in_sign) // 是否同号
             {
                 size_t add_len = std::max(len1, len2) + 1;
                 this->data.resize(add_len);
-                this->data[add_len - 1] = absAdd(this->getView(), input, this->getSpan());
+                auto view1 = View(this->data.data(), len1), view2 = input;
+                if (same)
+                {
+                    view2 = view1;
+                }
+                this->data[add_len - 1] = absAdd(view1, view2, this->getSpan());
             }
             else
             {
+                if (same)
+                {
+                    return *this = Integer{};
+                }
                 size_t sub_len = std::max(len1, len2);
-                int cmp = absCompare(this->getView(), input);
+                this->data.resize(sub_len);
+                auto view1 = View(this->data.data(), len1), view2 = input;
+                int cmp = absCompare(view1, view2);
                 if (cmp > 0)
                 {
-                    this->data.resize(sub_len);
                     // 不改变符号
-                    absSub(this->getView(), input, this->getSpan());
+                    absSub(view1, view2, this->getSpan());
                 }
                 else if (cmp < 0)
                 {
-                    this->data.resize(sub_len);
                     this->setSign(in_sign);
-                    absSub(input, this->getView(), this->getSpan());
+                    absSub(view2, view1, this->getSpan());
                 }
                 else
                 {
@@ -1457,7 +1466,8 @@ namespace hint
             this->setSign(false);
             size_t len = this->length();
             this->data.resize(len * 2);
-            absSqr(this->getView(), this->getSpan());
+            absSqr(View(this->data.data(), len), this->getSpan());
+            this->removeLeadingZero();
             return *this;
         }
         static Limb absMul1(View in, Limb x, Span out)
@@ -1903,6 +1913,54 @@ namespace hint
         DataVec data;
         bool sign;
     };
+
+    static const Integer fib_table[] = {0, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55};
+    constexpr size_t table_size = sizeof(fib_table) / sizeof(Integer);
+    // fib(n), fib(n+1)
+    void fib2(size_t n, Integer &fib_n, Integer &fib_n1)
+    {
+        if (n < table_size - 1)
+        {
+            fib_n = fib_table[n];
+            fib_n1 = fib_table[n + 1];
+            return;
+        }
+        Integer fib_m, fib_m_p1;
+        // f(2n) = (f(n-1) + f(n+1)) * f(n)
+        //       = (2f(n+1) - f(n)) * f(n)
+        //       = 2f(n+1) * f(n) - f(n)^2
+        // f(2n+1) = f(n)^2 + f(n+1)^2
+        //         = f(n)^2 + (f(n) + f(n-1)) * f(n+1)
+        //         = f(n)^2 + f(n) * f(n+1) + f(n-1) * f(n+1)
+        //         = f(n) * f(n+1) + 2f(n)^2 + (-1)^n
+        size_t m = n / 2;
+        fib2(m, fib_m, fib_m_p1);
+        fib_m_p1 *= fib_m; // f(m+1) * f(m)
+        fib_m.square();    // f(m)^2
+        fib_n = fib_m_p1 + fib_m_p1 - fib_m;
+        fib_n1 = fib_m_p1 + fib_m + fib_m;
+        fib_n1 += Integer(m % 2 == 0 ? 1 : -1);
+        if (n % 2 == 1)
+        {
+            std::swap(fib_n, fib_n1);
+            fib_n1 += fib_n;
+        }
+    }
+    Integer fib(size_t n)
+    {
+        if (n < table_size)
+        {
+            return fib_table[n];
+        }
+        Integer fib_m, fib_m_p1;
+        fib2(n / 2, fib_m, fib_m_p1);
+        if (n % 2 == 0)
+        {
+            fib_m_p1 += fib_m_p1;
+            return (fib_m_p1 -= fib_m) * fib_m;
+        }
+        return fib_m.square() + fib_m_p1.square();
+    }
 }
 
 #endif // HINT_MINI_HPP

@@ -146,9 +146,20 @@ void test_div_all()
     test_div(1e6, 10);
 }
 
+void test_fib()
+{
+    using namespace hint;
+    auto t1 = std::chrono::high_resolution_clock::now();
+    Integer a = fib(100000000);
+    auto t2 = std::chrono::high_resolution_clock::now();
+    std::cout << a << std::endl;
+    std::cout << std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count() << "us\n";
+}
+
 int main()
 {
     // test_mul();
     // test_inv();
-    test_div_all();
+    // test_div_all();
+    test_fib();
 }
