@@ -85,67 +85,80 @@ void test_div(size_t len, float k)
     std::cout << "Mul: " << std::chrono::duration_cast<std::chrono::microseconds>(t4 - t3).count() << "us\n";
     std::cout << "--------------------------------------------------------------------------------------\n";
 }
-
 void test_div_all()
 {
+    test_div(1e3, 0.9);
+    test_div(2e3, 0.9);
+    test_div(5e3, 0.9);
+    test_div(1e4, 0.9);
+    test_div(1e5, 0.9);
+    test_div(2e5, 0.9);
+    test_div(5e5, 0.9);
+    test_div(1e6, 0.9);
+
     test_div(1e3, 1.01);
     test_div(2e3, 1.01);
     test_div(5e3, 1.01);
     test_div(1e4, 1.01);
-    test_div(1e3, 1.02);
-    test_div(2e3, 1.02);
-    test_div(5e3, 1.02);
-    test_div(1e4, 1.02);
-    test_div(1e3, 1.4);
-    test_div(2e3, 1.4);
-    test_div(5e3, 1.4);
-    test_div(1e4, 1.4);
-    test_div(1e3, 1.5);
-    test_div(2e3, 1.5);
-    test_div(5e3, 1.5);
-    test_div(1e4, 1.5);
-    test_div(1e3, 2.0);
-    test_div(2e3, 2.0);
-    test_div(5e3, 2.0);
-    test_div(1e4, 2.0);
-    test_div(1e3, 5);
-    test_div(2e3, 5);
-    test_div(5e3, 5);
-    test_div(1e4, 5);
-    test_div(1e3, 10);
-    test_div(2e3, 10);
-    test_div(5e3, 10);
-    test_div(1e4, 10);
     test_div(1e5, 1.01);
     test_div(2e5, 1.01);
     test_div(5e5, 1.01);
     test_div(1e6, 1.01);
+
+    test_div(1e3, 1.02);
+    test_div(2e3, 1.02);
+    test_div(5e3, 1.02);
+    test_div(1e4, 1.02);
     test_div(1e5, 1.02);
     test_div(2e5, 1.02);
     test_div(5e5, 1.02);
     test_div(1e6, 1.02);
+
+    test_div(1e3, 1.4);
+    test_div(2e3, 1.4);
+    test_div(5e3, 1.4);
+    test_div(1e4, 1.4);
     test_div(1e5, 1.4);
     test_div(2e5, 1.4);
     test_div(5e5, 1.4);
     test_div(1e6, 1.4);
+
+    test_div(1e3, 1.5);
+    test_div(2e3, 1.5);
+    test_div(5e3, 1.5);
+    test_div(1e4, 1.5);
     test_div(1e5, 1.5);
     test_div(2e5, 1.5);
     test_div(5e5, 1.5);
     test_div(1e6, 1.5);
+
+    test_div(1e3, 2.0);
+    test_div(2e3, 2.0);
+    test_div(5e3, 2.0);
+    test_div(1e4, 2.0);
     test_div(1e5, 2.0);
     test_div(2e5, 2.0);
     test_div(5e5, 2.0);
     test_div(1e6, 2.0);
+
+    test_div(1e3, 5);
+    test_div(2e3, 5);
+    test_div(5e3, 5);
+    test_div(1e4, 5);
     test_div(1e5, 5);
     test_div(2e5, 5);
     test_div(5e5, 5);
     test_div(1e6, 5);
+
+    test_div(1e3, 10);
+    test_div(2e3, 10);
+    test_div(5e3, 10);
+    test_div(1e4, 10);
     test_div(1e5, 10);
     test_div(2e5, 10);
     test_div(5e5, 10);
     test_div(1e6, 10);
 }
-
 void test_fib()
 {
     using namespace hint;
@@ -160,6 +173,6 @@ int main()
 {
     // test_mul();
     // test_inv();
-    // test_div_all();
+    test_div_all();
     test_fib();
 }

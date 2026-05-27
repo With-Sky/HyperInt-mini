@@ -1719,7 +1719,7 @@ namespace hint
             else if (cmp < 0)
             {
                 quotient = Limb(0);
-                remainder = divisor;
+                remainder = *this;
             }
             else if (len2 == 1)
             {
