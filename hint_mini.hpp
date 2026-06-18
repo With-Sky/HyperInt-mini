@@ -1776,16 +1776,18 @@ namespace hint
             }
             int bits = hint_bit_length<uint32_t>(high_limb);
             int shift = HALF_BASE_BITS - bits;
-            Limb2 new_high = high_limb << shift;
-            if (divisor.size >= 2)
+            Limb2 carry = 0;
+            for (size_t i = 0; i < divisor.size - 1; i++)
             {
-                new_high += Limb2(divisor[divisor.size - 2] << shift) / BASE;
+                carry += Limb2(divisor[i]) << shift;
+                carry /= BASE;
             }
-            if (new_high < HALF_BASE)
+            carry += Limb2(high_limb) << shift;
+            if (carry < HALF_BASE)
             {
                 shift++;
             }
-            else if (new_high >= BASE)
+            else if (carry >= BASE)
             {
                 shift--;
             }

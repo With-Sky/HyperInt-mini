@@ -50,7 +50,7 @@ void test_inv()
 void test_div(size_t len, float k)
 {
     using namespace hint;
-    std::cout << "Length: " << len << " k: " << k << std::endl;
+    std::cout << "Length:" << len << " k:" << k << std::endl;
     std::string s1(len * k, '9'), s2(len, '7');
     srand(0);
     for (auto &c : s1)
@@ -78,11 +78,11 @@ void test_div(size_t len, float k)
         assert(r >= 0 && r < b);
     }
     assert(a == prod + r);
-    // std::cout << "Quotient: " << q << std::endl;
-    // std::cout << "Remainder: " << r << std::endl;
-    std::cout << "Div: " << std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count() << "us\n";
-    std::cout << "Mod: " << std::chrono::duration_cast<std::chrono::microseconds>(t3 - t2).count() << "us\n";
-    std::cout << "Mul: " << std::chrono::duration_cast<std::chrono::microseconds>(t4 - t3).count() << "us\n";
+    // std::cout <<"Quotient:" << q << std::endl;
+    // std::cout <<"Remainder:" << r << std::endl;
+    std::cout << "Div:" << std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count() << "us\n";
+    std::cout << "Mod:" << std::chrono::duration_cast<std::chrono::microseconds>(t3 - t2).count() << "us\n";
+    std::cout << "Mul:" << std::chrono::duration_cast<std::chrono::microseconds>(t4 - t3).count() << "us\n";
     std::cout << "--------------------------------------------------------------------------------------\n";
 }
 void test_div_all()
@@ -169,10 +169,46 @@ void test_fib()
     std::cout << std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count() << "us\n";
 }
 
+void div_str(const std::string &s1, const std::string &s2)
+{
+    hint::Integer a = s1, b = s2;
+    auto q = a / b;
+    auto r = a % b;
+    auto prod = q * b;
+    std::cout << "q: " << q << std::endl;
+    std::cout << "r: " << r << std::endl;
+    if (b < 0)
+    {
+        assert(r <= 0 && r > b);
+    }
+    else
+    {
+        assert(r >= 0 && r < b);
+    }
+    assert(a == prod + r);
+}
+
+void test_div_str()
+{
+    div_str("9857173763", "244146003");
+    div_str("8031505449", "122079749");
+    div_str("32302792763301767499", "97656515695019687");
+    div_str("447327016209964951", "976565871");
+    div_str("32329411505963797", "9765684728711");
+    div_str("65473856407750249", "976565836");
+    div_str("3486539733497304111", "244149359");
+    div_str("3530650012292719307", "1220704124367");
+    div_str("798418423953", "976565451");
+    div_str("95104723841702", "1220704798129");
+    div_str("861580423620394069399079918799859841668175090856703557", "976564420738452749803450086210131586793301181");
+    div_str("57067629428271558702752690917469225974961105666271788041314490", "4882854694507863679514955994199754473850064136253");
+}
 int main()
 {
     // test_mul();
     // test_inv();
-    test_div_all();
-    test_fib();
+    // test_div_all();
+    // test_fib();
+    test_div_str();
+    return 0;
 }
