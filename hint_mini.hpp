@@ -1916,10 +1916,11 @@ namespace hint
         bool sign;
     };
 
-    static const Integer fib_table[] = {0, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55};
+    static const Integer fib_table[] = {0, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89,
+                                        144, 233, 377, 610, 987, 1597, 2584, 4181, 6765};
     constexpr size_t table_size = sizeof(fib_table) / sizeof(Integer);
     // fib(n), fib(n+1)
-    void fib2(size_t n, Integer &fib_n, Integer &fib_n1)
+    void fib1(size_t n, Integer &fib_n, Integer &fib_n1)
     {
         if (n < table_size - 1)
         {
@@ -1936,7 +1937,7 @@ namespace hint
         //         = f(n)^2 + f(n) * f(n+1) + f(n-1) * f(n+1)
         //         = f(n) * f(n+1) + 2f(n)^2 + (-1)^n
         size_t m = n / 2;
-        fib2(m, fib_m, fib_m_p1);
+        fib1(m, fib_m, fib_m_p1);
         fib_m_p1 *= fib_m; // f(m+1) * f(m)
         fib_m.square();    // f(m)^2
         fib_n = fib_m_p1 + fib_m_p1 - fib_m;
@@ -1948,20 +1949,64 @@ namespace hint
             fib_n1 += fib_n;
         }
     }
-    Integer fib(size_t n)
+    Integer fib1(size_t n)
     {
         if (n < table_size)
         {
             return fib_table[n];
         }
         Integer fib_m, fib_m_p1;
-        fib2(n / 2, fib_m, fib_m_p1);
+        fib1(n / 2, fib_m, fib_m_p1);
         if (n % 2 == 0)
         {
             fib_m_p1 += fib_m_p1;
             return (fib_m_p1 -= fib_m) * fib_m;
         }
         return fib_m.square() + fib_m_p1.square();
+    }
+
+    // fib(n), fib(n-1)
+    void fib2(size_t n, Integer &fib_n, Integer &fib_n_m1)
+    {
+        if (n < table_size)
+        {
+            fib_n = fib_table[n];
+            fib_n_m1 = fib_table[n - 1];
+            return;
+        }
+        Integer fib_m, fib_m_m1;
+        size_t m = n / 2;
+        fib2(m, fib_m, fib_m_m1);
+        fib_m_m1.square(); // f(m-1)^2
+        fib_m.square();    // f(m)^2
+        // f(2m-1) = f(m)^2 + f(m-1)^2
+        // f(2m+1) = 4*f(m)^2 - f(m)^2 + 2*(-1)^m
+        fib_n = fib_m * 4 - fib_m_m1;
+        fib_n += Integer(m % 2 == 0 ? 2 : -2);
+        fib_n_m1 = fib_m_m1 + fib_m;
+        if (n % 2 == 1)
+        {
+            fib_n_m1 = fib_n - fib_n_m1;
+        }
+        else
+        {
+            fib_n -= fib_n_m1;
+        }
+    }
+    Integer fib2(size_t n)
+    {
+        if (n < table_size)
+        {
+            return fib_table[n];
+        }
+        Integer fib_m, fib_m_m1;
+        fib2(n / 2, fib_m, fib_m_m1);
+        if (n % 2 == 0)
+        {
+            return fib_m * (fib_m + fib_m_m1 * 2);
+        }
+        fib_m *= 2;
+        return (fib_m + fib_m_m1) * (fib_m - fib_m_m1) + Integer((n / 2) % 2 == 0 ? 2 : -2);
     }
 }
 
