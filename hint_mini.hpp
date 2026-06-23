@@ -1741,7 +1741,10 @@ namespace hint
                 {
                     quotient.data[quot_len - 1] = 1;
                     absSub(high, divisor_span, high);
-                    len1 = dividend_span.size = count_true_length(dividend_span.ptr, dividend_span.size);
+                }
+                else
+                {
+                    quotient.data[quot_len - 1] = 0;
                 }
                 // 剩余的quotient一定为len1-len2位
                 Span quot_span(quotient.data.data(), len1 - len2);

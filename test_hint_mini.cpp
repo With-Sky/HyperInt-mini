@@ -163,7 +163,7 @@ void test_fib()
 {
     using namespace hint;
     auto t1 = std::chrono::high_resolution_clock::now();
-    Integer a = fib(100000000);
+    Integer a = fib2(100000000);
     auto t2 = std::chrono::high_resolution_clock::now();
     std::cout << a << std::endl;
     std::cout << std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count() << "us\n";
@@ -190,6 +190,16 @@ void div_str(const std::string &s1, const std::string &s2)
 
 void test_div_str()
 {
+    div_str("78956280120995889940283644187011081529620816345643213303605", "7894797141528365916699815572551941661773547");
+    div_str("68531229432102693399511930722022626964490095705713208969499031614", "685227870287240733251");
+    div_str("7136536140517299", "71357498");
+    div_str("4887201181946", "48864");
+    div_str("8997512465127264013", "89964615971");
+    div_str("6417226261819799685", "641632521412603");
+    div_str("67598293602980262493", "6759110519054328");
+    div_str("8395653085539", "83948");
+    div_str("90484077200794", "9047165549");
+    div_str("90421703377908", "9040669327");
     div_str("9857173763", "244146003");
     div_str("8031505449", "122079749");
     div_str("32302792763301767499", "97656515695019687");
