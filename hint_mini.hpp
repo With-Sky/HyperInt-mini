@@ -1558,8 +1558,9 @@ namespace hint
             assert(inv.size >= k + 1); // 确保内存空间足够
             if (k <= 16)
             {
-                Limb b_2k[64]{};
+                Limb b_2k[64];
                 b_2k[k * 2] = 1; // BASE ^ (k * 2)
+                std::fill_n(b_2k, k * 2, Limb(0));
                 absDivBasicCore(Span(b_2k, k * 2 + 1), m, inv);
                 return;
             }
