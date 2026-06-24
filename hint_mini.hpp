@@ -1638,7 +1638,7 @@ namespace hint
                 return;
             }
             assert(divisor.size > 0);
-            size_t len1 = dividend.size, len2 = divisor.size, quot_len = len1 - len2, shift_len = len2 * 2 - len1;
+            size_t len1 = dividend.size, len2 = divisor.size, quot_len = len1 - len2, shift_len = len2 - quot_len;
             assert(divisor[len2 - 1] >= HALF_BASE);
             Span dividend_high = dividend + shift_len;
             View divisor_high = divisor + shift_len;
@@ -1665,16 +1665,24 @@ namespace hint
             prod_span.size = count_true_length(prod_span.ptr, prod_span.size);
             dividend.size = count_true_length(dividend.ptr, dividend.size);
             dividend_high.size = count_true_length(dividend_high.ptr, dividend_high.size);
+            int count = 0;
             while (absCompare(prod_span, dividend) > 0)
             {
+                assert(count < 2);
+                count++;
                 absSub1(quotient, 1, quotient); // quotient--
                 quotient.size = count_true_length(quotient.ptr, quotient.size);
                 if (absAdd(dividend_high, divisor_high, dividend_high)) // dividend_high += divisor_high
                 {
-                    dividend_high[dividend_high.size] = 1;
-                    dividend_high.size++;
-                    dividend.size++;
+                    size_t add_len = std::max(dividend_high.size, divisor_high.size);
+                    dividend_high[add_len] = 1;
+                    dividend_high.size = add_len + 1;
                 }
+                else
+                {
+                    dividend_high.size = std::max(dividend_high.size, divisor_high.size);
+                }
+                dividend.size = dividend_high.size + shift_len;
                 absSub(prod_span, divisor_low, prod_span); // prod -= divisor_low
                 prod_span.size = count_true_length(prod_span.ptr, prod_span.size);
             }
